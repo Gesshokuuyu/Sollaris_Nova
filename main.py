@@ -58,7 +58,8 @@ def launch_gui() -> None:
     root.minsize(LayoutDimensions.WINDOW_MIN_WIDTH, LayoutDimensions.WINDOW_MIN_HEIGHT)
     root.configure(fg_color=ThemeColors.BG_MAIN)
 
-    icon_path = Path(__file__).resolve().parent / "assets" / "icon.ico"
+    assets_dir = Path(__file__).resolve().parent / "assets"
+    icon_path = assets_dir / "sollaris_nova.ico" if (assets_dir / "sollaris_nova.ico").exists() else (assets_dir / "icon.ico")
     if icon_path.exists():
         try:
             root.iconbitmap(str(icon_path))
