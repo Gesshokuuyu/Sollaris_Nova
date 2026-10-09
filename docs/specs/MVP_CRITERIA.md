@@ -38,13 +38,13 @@ O MVP será considerado concluído quando todos os itens abaixo forem verificado
 
 | Requisito | Descrição | Status no MVP | Método de Verificação |
 | :--- | :--- | :--- | :--- |
-| **RF-001** | Uso atual da CPU (%) | Obrigatório | Comparação com Gerenciador de Tarefas |
-| **RF-002** | RAM usada, disponível e total | Obrigatório | Comparação com `systeminfo` / Task Manager |
-| **RF-003** | Armazenamento por unidade | Obrigatório | Validação com `Get-PSDrive` |
-| **RF-004** | Temperatura de CPU/GPU | Obrigatório | Verificação de disponibilidade de sensor |
-| **RF-005** | Top processos por RAM | Obrigatório | Validação com lista de processos `psutil` |
-| **RF-006** | UI não bloqueante | Obrigatório | Teste de arrasto e interação durante coleta |
-| **RF-007** | Gráfico dos últimos 60s | Obrigatório | Verificação visual e teste de deque fixo |
-| **RF-008** | Alertas de gargalo persistente | Obrigatório | Teste unitário com dados simulados no `core` |
-| **RF-009** | Tratamento de sensores ausentes | Obrigatório | Teste em máquina com/sem sensores |
-| **RF-010** | Tratamento de erros sem crash | Obrigatório | Teste com mock de `psutil.NoSuchProcess` |
+| **RF-001** | Uso atual da CPU (%) | Validado (Fase 1) | Comparação com Gerenciador de Tarefas / `test_hardware.py` |
+| **RF-002** | RAM usada, disponível e total | Validado (Fase 1) | Comparação com `systeminfo` / `test_hardware.py` |
+| **RF-003** | Armazenamento por unidade | Validado (Fase 1) | Validação com `Get-PSDrive` / `test_hardware.py` |
+| **RF-004** | Temperatura de CPU/GPU | Validado (Fase 1) | Resiliência ACPI/WMI validada via `test_hardware.py` |
+| **RF-005** | Top processos por RAM | Pendente (Fase 2) | Validação com lista de processos `psutil` |
+| **RF-006** | UI não bloqueante | Pendente (Fase 2) | Teste de arrasto e interação durante coleta assíncrona |
+| **RF-007** | Gráfico dos últimos 60s | Pendente (Fase 2) | Verificação visual e teste de deque fixo |
+| **RF-008** | Alertas de gargalo persistente | Pendente (Fase 3) | Teste unitário com dados simulados no `core` |
+| **RF-009** | Tratamento de sensores ausentes | Validado (Fase 1) | Teste com mock de `wmi.x_access_denied` em `test_hardware.py` |
+| **RF-010** | Tratamento de erros sem crash | Validado Parcial (Fase 1) | Teste de discos e WMI concluído; processos na Fase 2 |

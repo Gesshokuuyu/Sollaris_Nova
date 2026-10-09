@@ -9,12 +9,43 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Não Lançado] - Em Desenvolvimento
 
-### Planejado para o MVP (Fases 1 a 3)
-- Monitoramento de CPU, memória RAM e armazenamento em tempo real.
-- Detecção e leitura de sensores de temperatura (CPU/GPU) com fallback resiliente.
-- Gráficos históricos de 60 segundos com Matplotlib integrado ao CustomTkinter.
-- Lista ordenada dos processos com maior consumo de RAM e uso de CPU.
-- Motor de diagnósticos com persistência de amostras e explicações técnicas.
+### Planejado para a Fase 2 (Dashboard Completo)
+- Thread assíncrona de coleta com fila thread-safe (`core.monitor.MonitorService`).
+- Buffer circular de 60 segundos com `collections.deque(maxlen=60)`.
+- Gráfico histórico duplo de CPU e RAM em tempo real com Matplotlib.
+- Monitor de processos (Top 5 por uso de memória RAM) com tratamento de permissões.
+
+---
+
+## [0.1.0-alpha] - 2026-10-09 (Fase 1: Fundação & Hardware)
+
+### Adicionado
+- **Núcleo de Métricas Autênticas (`core/hardware.py`):**
+  - Dataclasses imutáveis tipadas: `SensorReading`, `CpuMetrics`, `RamMetrics`, `DiskPartitionMetrics`, `GpuMetrics` e `SystemSnapshot`.
+  - Coletor de hardware (`HardwareCollector`) via `psutil`, `platform` e WMI (`Win32_VideoController`).
+  - Tratamento resiliente de sensores ACPI: captura limpa de `wmi.x_access_denied` sem crash ou zeros artificiais.
+  - Filtro protetor de partições: supressão de exceções em unidades de cartão de memória ou discos vazios.
+  - Formatadores de precisão: `format_bytes`, `format_frequency` e `format_uptime`.
+- **Design System & Navegação Sem Emojis (`app/components/sidebar.py`):**
+  - Barra lateral de 220px com navegação técnica.
+  - Conjunto de 14 ícones monocromáticos em PNG (`assets/nav_icons/`) para estados normal e ativo das rotas.
+- **Painel Técnico de Hardware (`app/window.py`):**
+  - Header bar com timestamp da amostragem, badge de estabilidade e botão "Atualizar Agora".
+  - Cartão de CPU com destaque percentual, progresso colorido, modelo, núcleos, frequências e temperatura.
+  - Cartão de RAM com proporção em uso / total, barra de progresso e nota técnica sobre cache reaproveitável.
+  - Cartão de Armazenamento multi-partição dinâmico com alertas para unidades abaixo de 15 GB livres.
+  - Cartão de GPU & Sensores com nome da placa, versão do driver e status de interface WMI.
+  - Cartão do Sistema com versão do Windows, compilação, arquitetura e uptime formatado.
+  - Barra de rodapé técnica com status operacional.
+- **Ponto de Entrada Integrado (`main.py`):**
+  - Conexão nativa com `MainWindow`.
+  - CLI com flags `--check-env` e `--verbose`.
+- **Suíte de Testes Automatizados (`tests/`):**
+  - 15 testes automatizados aprovados no `pytest` cobrindo o ambiente, a camada de hardware e a interface gráfica.
+- **Artefatos e Governança:**
+  - Criação de `docs/phases/PHASE_1_FOUNDATION.md`.
+  - Atualização do catálogo vivo `docs/specs/FUTURE_REQUIREMENTS.md`.
+  - Atualização dos critérios de aceite em `docs/specs/MVP_CRITERIA.md`.
 
 ---
 

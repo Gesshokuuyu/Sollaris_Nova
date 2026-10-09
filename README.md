@@ -21,6 +21,7 @@ Para manter a consistência contínua do projeto, a documentação viva está es
 | :--- | :--- |
 | [PROJECT_SPEC.md](file:///d:/GitHub/Sollaris_Nova/PROJECT_SPEC.md) | Especificação técnica mestre (Visão geral, escopo do MVP, RF-001 a RF-015, métricas e fases) |
 | [docs/specs/MVP_CRITERIA.md](file:///d:/GitHub/Sollaris_Nova/docs/specs/MVP_CRITERIA.md) | Critérios de aceite e Definição de Pronto (DoD) do MVP |
+| [docs/specs/FUTURE_REQUIREMENTS.md](file:///d:/GitHub/Sollaris_Nova/docs/specs/FUTURE_REQUIREMENTS.md) | Catálogo vivo de novos requisitos futuros e backlog levantados a cada fase |
 | [docs/architecture/ARCHITECTURE.md](file:///d:/GitHub/Sollaris_Nova/docs/architecture/ARCHITECTURE.md) | Arquitetura em camadas desacopladas, thread de coleta em background e dataclasses imutáveis |
 | [docs/standards/DESIGN_SYSTEM.md](file:///d:/GitHub/Sollaris_Nova/docs/standards/DESIGN_SYSTEM.md) | Design System (Paleta de cores `#0B0F14` / `#3B82F6`, Segoe UI, espaçamento, proibições) |
 | [docs/standards/CODE_STANDARDS.md](file:///d:/GitHub/Sollaris_Nova/docs/standards/CODE_STANDARDS.md) | Padrões de código PEP 8, tipagem estática obrigatória, tratamento resiliente de erros e commits |
