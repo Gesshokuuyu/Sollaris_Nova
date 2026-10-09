@@ -44,7 +44,7 @@ O MVP será considerado concluído quando todos os itens abaixo forem verificado
 | **RF-004** | Temperatura de CPU/GPU | Validado (Fase 1) | Resiliência ACPI/WMI validada via `test_hardware.py` |
 | **RF-005** | Top processos por RAM | Validado (Fase 1) | Validação com Win32 Toolhelp32Snapshot / `test_modules.py` |
 | **RF-006** | UI não bloqueante | Validado (Fase 1) | MonitorService background thread + loader não-bloqueante / `test_window.py` |
-| **RF-007** | Gráfico dos últimos 60s | Pendente (Fase 2) | Verificação visual e teste de deque fixo com Matplotlib |
+| **RF-007** | Gráfico dos últimos 60s | Validado (Fase 2) | PerformanceChart com FigureCanvasTkAgg, deque(maxlen=60) e test_charts.py |
 | **RF-008** | Alertas de gargalo persistente | Pendente (Fase 3) | Teste unitário com dados simulados no `core` |
 | **RF-009** | Tratamento de sensores ausentes | Validado (Fase 1) | Teste com mock de `wmi.x_access_denied` em `test_hardware.py` |
 | **RF-010** | Tratamento de erros sem crash | Validado (Fase 1) | Cobertura total de discos, WMI, processos e UI sem crash |

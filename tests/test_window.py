@@ -71,8 +71,9 @@ def test_main_window_lifecycle() -> None:
         app = MainWindow()
         try:
             # Verifica se os componentes foram criados
-            assert app._cpu_big_val is not None
-            assert app._ram_big_val is not None
+            assert app._cpu_gauge is not None
+            assert app._ram_gauge is not None
+            assert app._perf_chart is not None
             assert app._storage_card is not None
             assert app._gpu_name_lbl is not None
             assert app._global_status_badge is not None
@@ -81,11 +82,11 @@ def test_main_window_lifecycle() -> None:
             app.refresh_metrics()
 
             # Valida os valores renderizados
-            assert "25.5 %" in app._cpu_big_val.cget("text")
             assert "AMD Ryzen Mock" in app._cpu_model_lbl.cget("text")
-            assert "50.0%" in app._ram_big_val.cget("text")
             assert "RTX 4070" in app._gpu_name_lbl.cget("text")
             assert "Windows 10 Pro" in app._sys_os_lbl.cget("text")
+            assert app._cpu_gauge._current_value == 25.5
+            assert app._ram_gauge._current_value == 50.0
 
             # Verifica se o container de discos tem widgets filhos
             assert len(app._disks_container.winfo_children()) >= 1

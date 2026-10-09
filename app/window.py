@@ -14,7 +14,10 @@ from pathlib import Path
 
 import customtkinter as ctk
 
+from app.components.performance_chart import PerformanceChart
+from app.components.radial_gauge import RadialGauge
 from app.components.sidebar import Sidebar
+from app.components.tooltip import Tooltip
 from app.theme import LayoutDimensions, ThemeColors, Typography
 from core.cleaner import CleanerScanner
 from core.diagnostics import DiagnosticEngine, FindingLevel
@@ -49,6 +52,7 @@ class MainWindow(ctk.CTk):
         self._is_destroyed = False
         self._is_loading = False
         self._last_rendered_timestamp: datetime | None = None
+        self._current_snapshot: SystemSnapshot | None = None
         self._poll_after_id: str | None = None
 
         # Estatísticas da sessão
@@ -149,6 +153,7 @@ class MainWindow(ctk.CTk):
             pady=4,
         )
         self._global_status_badge.pack(side="left", padx=(0, LayoutDimensions.PAD_MD))
+        Tooltip(self._global_status_badge, self._get_status_tooltip_text)
 
         self._refresh_btn = ctk.CTkButton(
             actions_box,
@@ -258,7 +263,7 @@ class MainWindow(ctk.CTk):
     # =========================================================================
 
     def _build_overview_cards(self, parent: ctk.CTkScrollableFrame) -> None:
-        """Constrói os cartões da página de Visão Geral."""
+        """Constrói os cartões da página de Visão Geral com RadialGauges e gráfico Matplotlib."""
         # 1. Cartão CPU
         self._cpu_card = ctk.CTkFrame(
             parent,
@@ -276,15 +281,23 @@ class MainWindow(ctk.CTk):
         self._cpu_badge = ctk.CTkLabel(cpu_top, text="Normal", font=Typography.caption(), text_color=ThemeColors.STATUS_OK)
         self._cpu_badge.pack(side="right")
 
-        self._cpu_big_val = ctk.CTkLabel(self._cpu_card, text="-- %", font=Typography.metric_value(), text_color=ThemeColors.TEXT_PRIMARY)
-        self._cpu_big_val.pack(anchor="w", padx=LayoutDimensions.PAD_LG, pady=(0, LayoutDimensions.PAD_SM))
+        # Corpo com RadialGauge à esquerda e detalhes técnicos à direita
+        cpu_body = ctk.CTkFrame(self._cpu_card, fg_color="transparent")
+        cpu_body.pack(fill="x", padx=LayoutDimensions.PAD_LG, pady=(4, LayoutDimensions.PAD_SM))
 
-        self._cpu_progress = ctk.CTkProgressBar(self._cpu_card, height=8, corner_radius=4, border_width=0, fg_color="#141E2B", progress_color=ThemeColors.STATUS_OK)
-        self._cpu_progress.pack(fill="x", padx=LayoutDimensions.PAD_LG, pady=(0, LayoutDimensions.PAD_MD))
-        self._cpu_progress.set(0)
+        self._cpu_gauge = RadialGauge(
+            cpu_body,
+            size=116,
+            stroke_width=8,
+            default_accent_color=ThemeColors.ACCENT_BLUE,
+            label="CARGA",
+            fg_color=ThemeColors.BG_SURFACE,
+        )
+        self._cpu_gauge.pack(side="left", padx=(0, LayoutDimensions.PAD_MD), pady=2)
+        self._cpu_gauge.set_tooltip(self._get_cpu_tooltip_text)
 
-        cpu_details = ctk.CTkFrame(self._cpu_card, fg_color="transparent")
-        cpu_details.pack(fill="x", padx=LayoutDimensions.PAD_LG, pady=(0, LayoutDimensions.PAD_SM))
+        cpu_details = ctk.CTkFrame(cpu_body, fg_color="transparent")
+        cpu_details.pack(side="left", fill="both", expand=True)
 
         self._cpu_model_lbl = ctk.CTkLabel(cpu_details, text="• Modelo: Detectando...", font=Typography.caption(), text_color=ThemeColors.TEXT_PRIMARY, anchor="w")
         self._cpu_model_lbl.pack(fill="x", pady=1)
@@ -298,12 +311,12 @@ class MainWindow(ctk.CTk):
         self._cpu_temp_lbl = ctk.CTkLabel(cpu_details, text="• Temperatura: Sensor indisponível", font=Typography.caption(), text_color=ThemeColors.TEXT_MUTED, anchor="w")
         self._cpu_temp_lbl.pack(fill="x", pady=1)
 
-        self._cpu_procs_lbl = ctk.CTkLabel(cpu_details, text="• Processos Ativos no SO: --", font=Typography.caption(), text_color=ThemeColors.TEXT_MUTED, anchor="w")
-        self._cpu_procs_lbl.pack(fill="x", pady=1)
+        self._cpu_stats_lbl = ctk.CTkLabel(cpu_details, text="• Janela 60s: Média --% | Pico --%", font=Typography.caption(), text_color=ThemeColors.ACCENT_LIGHT, anchor="w")
+        self._cpu_stats_lbl.pack(fill="x", pady=1)
 
         # Micro-medidores persistentes de núcleos
         self._cores_box = ctk.CTkFrame(self._cpu_card, fg_color="transparent")
-        self._cores_box.pack(fill="x", padx=LayoutDimensions.PAD_LG, pady=(4, LayoutDimensions.PAD_LG))
+        self._cores_box.pack(fill="x", padx=LayoutDimensions.PAD_LG, pady=(2, LayoutDimensions.PAD_LG))
 
         cores_hdr = ctk.CTkFrame(self._cores_box, fg_color="transparent")
         cores_hdr.pack(fill="x", pady=(2, 4))
@@ -313,7 +326,7 @@ class MainWindow(ctk.CTk):
         self._grid_cores.pack(fill="x")
         self._core_chip_labels = []
         cols = 6
-        for idx in range(12):  # Suporta até 12-16 núcleos em slots pré-alocados
+        for idx in range(12):
             r = idx // cols
             c = idx % cols
             self._grid_cores.grid_columnconfigure(c, weight=1)
@@ -322,6 +335,8 @@ class MainWindow(ctk.CTk):
             lbl = ctk.CTkLabel(cell, text=f"N{idx+1}: 0%", font=(Typography.FONT_FAMILY, 9), text_color=ThemeColors.STATUS_OK)
             lbl.pack(padx=2, pady=1)
             self._core_chip_labels.append(lbl)
+            Tooltip(cell, lambda i=idx: self._get_core_tooltip_text(i))
+            Tooltip(lbl, lambda i=idx: self._get_core_tooltip_text(i))
 
         # 2. Cartão RAM
         self._ram_card = ctk.CTkFrame(
@@ -340,15 +355,23 @@ class MainWindow(ctk.CTk):
         self._ram_badge = ctk.CTkLabel(ram_top, text="Normal", font=Typography.caption(), text_color=ThemeColors.STATUS_OK)
         self._ram_badge.pack(side="right")
 
-        self._ram_big_val = ctk.CTkLabel(self._ram_card, text="-- / --", font=(Typography.FONT_FAMILY, 20, "bold"), text_color=ThemeColors.TEXT_PRIMARY)
-        self._ram_big_val.pack(anchor="w", padx=LayoutDimensions.PAD_LG, pady=(6, LayoutDimensions.PAD_SM))
+        # Corpo com RadialGauge à esquerda e detalhes técnicos à direita
+        ram_body = ctk.CTkFrame(self._ram_card, fg_color="transparent")
+        ram_body.pack(fill="x", padx=LayoutDimensions.PAD_LG, pady=(4, LayoutDimensions.PAD_SM))
 
-        self._ram_progress = ctk.CTkProgressBar(self._ram_card, height=8, corner_radius=4, border_width=0, fg_color="#141E2B", progress_color=ThemeColors.STATUS_OK)
-        self._ram_progress.pack(fill="x", padx=LayoutDimensions.PAD_LG, pady=(0, LayoutDimensions.PAD_MD))
-        self._ram_progress.set(0)
+        self._ram_gauge = RadialGauge(
+            ram_body,
+            size=116,
+            stroke_width=8,
+            default_accent_color=ThemeColors.STATUS_OK,
+            label="EM USO",
+            fg_color=ThemeColors.BG_SURFACE,
+        )
+        self._ram_gauge.pack(side="left", padx=(0, LayoutDimensions.PAD_MD), pady=2)
+        self._ram_gauge.set_tooltip(self._get_ram_tooltip_text)
 
-        ram_details = ctk.CTkFrame(self._ram_card, fg_color="transparent")
-        ram_details.pack(fill="x", padx=LayoutDimensions.PAD_LG, pady=(0, LayoutDimensions.PAD_SM))
+        ram_details = ctk.CTkFrame(ram_body, fg_color="transparent")
+        ram_details.pack(side="left", fill="both", expand=True)
 
         self._ram_used_lbl = ctk.CTkLabel(ram_details, text="• Em Uso: --", font=Typography.caption(), text_color=ThemeColors.TEXT_PRIMARY, anchor="w")
         self._ram_used_lbl.pack(fill="x", pady=1)
@@ -359,22 +382,25 @@ class MainWindow(ctk.CTk):
         self._ram_total_lbl = ctk.CTkLabel(ram_details, text="• Total Instalada: --", font=Typography.caption(), text_color=ThemeColors.TEXT_MUTED, anchor="w")
         self._ram_total_lbl.pack(fill="x", pady=1)
 
-        self._ram_swap_lbl = ctk.CTkLabel(ram_details, text="• Arquivo de Paginação (Swap): --", font=Typography.caption(), text_color=ThemeColors.TEXT_MUTED, anchor="w")
+        self._ram_swap_lbl = ctk.CTkLabel(ram_details, text="• Paginação (Swap): --", font=Typography.caption(), text_color=ThemeColors.TEXT_MUTED, anchor="w")
         self._ram_swap_lbl.pack(fill="x", pady=1)
 
-        self._swap_progress = ctk.CTkProgressBar(ram_details, height=6, corner_radius=3, border_width=0, fg_color="#141E2B", progress_color=ThemeColors.ACCENT_LIGHT)
-        self._swap_progress.pack(fill="x", pady=(4, 6))
-        self._swap_progress.set(0)
+        self._ram_stats_lbl = ctk.CTkLabel(ram_details, text="• Janela 60s: Média --% | Pico --%", font=Typography.caption(), text_color=ThemeColors.ACCENT_LIGHT, anchor="w")
+        self._ram_stats_lbl.pack(fill="x", pady=1)
 
         ctk.CTkLabel(
-            ram_details,
+            self._ram_card,
             text="A memória disponível inclui cache reaproveitável pelo Windows.",
             font=(Typography.FONT_FAMILY, 9, "italic"),
             text_color=ThemeColors.TEXT_INACTIVE,
             anchor="w",
-        ).pack(fill="x", pady=(2, LayoutDimensions.PAD_SM))
+        ).pack(fill="x", padx=LayoutDimensions.PAD_LG, pady=(2, LayoutDimensions.PAD_MD))
 
-        # 3. Cartão Armazenamento Local
+        # 3. Gráfico Histórico dos Últimos 60 Segundos (Matplotlib)
+        self._perf_chart = PerformanceChart(parent)
+        self._perf_chart.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(0, LayoutDimensions.PAD_LG))
+
+        # 4. Cartão Armazenamento Local
         self._storage_card = ctk.CTkFrame(
             parent,
             fg_color=ThemeColors.BG_SURFACE,
@@ -382,7 +408,7 @@ class MainWindow(ctk.CTk):
             border_color=ThemeColors.BORDER,
             corner_radius=LayoutDimensions.CORNER_RADIUS_CARD,
         )
-        self._storage_card.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(0, LayoutDimensions.PAD_LG))
+        self._storage_card.grid(row=2, column=0, columnspan=2, sticky="nsew", pady=(0, LayoutDimensions.PAD_LG))
 
         storage_top = ctk.CTkFrame(self._storage_card, fg_color="transparent")
         storage_top.pack(fill="x", padx=LayoutDimensions.PAD_LG, pady=(LayoutDimensions.PAD_LG, LayoutDimensions.PAD_SM))
@@ -399,7 +425,7 @@ class MainWindow(ctk.CTk):
         except (OSError, RuntimeError) as exc:
             logger.debug("Falha na pré-inicialização de discos: %s", exc)
 
-        # 4. Cartão GPU e Display
+        # 5. Cartão GPU e Display
         self._gpu_card = ctk.CTkFrame(
             parent,
             fg_color=ThemeColors.BG_SURFACE,
@@ -407,7 +433,7 @@ class MainWindow(ctk.CTk):
             border_color=ThemeColors.BORDER,
             corner_radius=LayoutDimensions.CORNER_RADIUS_CARD,
         )
-        self._gpu_card.grid(row=2, column=0, sticky="nsew", padx=(0, LayoutDimensions.PAD_MD), pady=(0, LayoutDimensions.PAD_LG))
+        self._gpu_card.grid(row=3, column=0, sticky="nsew", padx=(0, LayoutDimensions.PAD_MD), pady=(0, LayoutDimensions.PAD_LG))
 
         gpu_top = ctk.CTkFrame(self._gpu_card, fg_color="transparent")
         gpu_top.pack(fill="x", padx=LayoutDimensions.PAD_LG, pady=(LayoutDimensions.PAD_LG, 4))
@@ -434,7 +460,7 @@ class MainWindow(ctk.CTk):
         self._sensors_status_lbl = ctk.CTkLabel(gpu_details, text="• Sensores de Vídeo: Operantes", font=Typography.caption(), text_color=ThemeColors.TEXT_MUTED, anchor="w")
         self._sensors_status_lbl.pack(fill="x", pady=2)
 
-        # 5. Cartão Sistema & Ambiente
+        # 6. Cartão Sistema & Ambiente
         self._sys_card = ctk.CTkFrame(
             parent,
             fg_color=ThemeColors.BG_SURFACE,
@@ -442,7 +468,7 @@ class MainWindow(ctk.CTk):
             border_color=ThemeColors.BORDER,
             corner_radius=LayoutDimensions.CORNER_RADIUS_CARD,
         )
-        self._sys_card.grid(row=2, column=1, sticky="nsew", padx=(LayoutDimensions.PAD_MD, 0), pady=(0, LayoutDimensions.PAD_LG))
+        self._sys_card.grid(row=3, column=1, sticky="nsew", padx=(LayoutDimensions.PAD_MD, 0), pady=(0, LayoutDimensions.PAD_LG))
 
         sys_top = ctk.CTkFrame(self._sys_card, fg_color="transparent")
         sys_top.pack(fill="x", padx=LayoutDimensions.PAD_LG, pady=(LayoutDimensions.PAD_LG, 4))
@@ -463,7 +489,7 @@ class MainWindow(ctk.CTk):
         self._sys_runtime_lbl = ctk.CTkLabel(sys_details, text="• Runtime: Python 3.14 (Desktop)", font=Typography.caption(), text_color=ThemeColors.TEXT_MUTED, anchor="w")
         self._sys_runtime_lbl.pack(fill="x", pady=2)
 
-        # 6. Cartão Top Processos (com 6 linhas pré-alocadas para atualização em 0ms)
+        # 7. Cartão Top Processos (com 6 linhas pré-alocadas para atualização em 0ms)
         self._procs_card = ctk.CTkFrame(
             parent,
             fg_color=ThemeColors.BG_SURFACE,
@@ -471,7 +497,7 @@ class MainWindow(ctk.CTk):
             border_color=ThemeColors.BORDER,
             corner_radius=LayoutDimensions.CORNER_RADIUS_CARD,
         )
-        self._procs_card.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=(0, LayoutDimensions.PAD_LG))
+        self._procs_card.grid(row=4, column=0, columnspan=2, sticky="nsew", pady=(0, LayoutDimensions.PAD_LG))
 
         procs_top = ctk.CTkFrame(self._procs_card, fg_color="transparent")
         procs_top.pack(fill="x", padx=LayoutDimensions.PAD_LG, pady=(LayoutDimensions.PAD_LG, LayoutDimensions.PAD_SM))
@@ -498,12 +524,12 @@ class MainWindow(ctk.CTk):
             p_mem.pack(side="right")
             self._proc_rows.append({"pid": p_pid, "name": p_name, "mem": p_mem})
 
-        # 7. Barra de Rodapé
+        # 8. Barra de Rodapé
         status_bar = ctk.CTkFrame(parent, fg_color="transparent", border_width=LayoutDimensions.BORDER_WIDTH, border_color=ThemeColors.BORDER, corner_radius=LayoutDimensions.CORNER_RADIUS_CARD)
-        status_bar.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(0, LayoutDimensions.PAD_SM))
+        status_bar.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(0, LayoutDimensions.PAD_SM))
         ctk.CTkLabel(
             status_bar,
-            text="Status: Operacional • Monitoramento assíncrono em segundo plano • Zero telemetria • Sollaris Nova v0.1.0-alpha",
+            text="Status: Operacional • Monitoramento assíncrono em segundo plano • Zero telemetria • Sollaris Nova v0.2.0-alpha",
             font=Typography.caption(),
             text_color=ThemeColors.TEXT_INACTIVE,
         ).pack(padx=LayoutDimensions.PAD_MD, pady=LayoutDimensions.PAD_SM)
@@ -742,6 +768,7 @@ class MainWindow(ctk.CTk):
 
     def _render_data_to_ui(self, snap: SystemSnapshot, procs: list[ProcessItem]) -> None:
         """Atualiza os valores dos widgets existentes sem recriá-los (0ms)."""
+        self._current_snapshot = snap
         now_str = datetime.now().astimezone().strftime("%H:%M:%S")
         self._timestamp_label.configure(text=f"Última amostragem: {now_str} • Ao Vivo")
 
@@ -774,8 +801,7 @@ class MainWindow(ctk.CTk):
         """Atualiza valores dos cartões de Visão Geral sem desmontar a árvore de widgets."""
         # 1. CPU
         cpu_pct = snap.cpu.total_percent
-        self._cpu_big_val.configure(text=f"{cpu_pct:.1f} %")
-        self._cpu_progress.set(cpu_pct / 100.0)
+        self._cpu_gauge.set_value(cpu_pct, max_value=100.0, display_text=f"{cpu_pct:.1f}%")
 
         if cpu_pct > 85.0:
             cpu_status, cpu_color = "Crítico", ThemeColors.STATUS_ERROR
@@ -785,13 +811,11 @@ class MainWindow(ctk.CTk):
             cpu_status, cpu_color = "Normal", ThemeColors.STATUS_OK
 
         self._cpu_badge.configure(text=cpu_status, text_color=cpu_color)
-        self._cpu_progress.configure(progress_color=cpu_color)
 
         self._cpu_model_lbl.configure(text=f"• Modelo: {snap.cpu.model_name}")
         self._cpu_cores_lbl.configure(text=f"• Núcleos: {snap.cpu.core_count_physical} Físicos | {snap.cpu.core_count_logical} Lógicos")
         freq_str = f"Base: {format_frequency(snap.cpu.frequency_base_mhz)} | Atual: {format_frequency(snap.cpu.frequency_current_mhz)}"
         self._cpu_freq_lbl.configure(text=f"• Frequência: {freq_str}")
-        self._cpu_procs_lbl.configure(text=f"• Processos Ativos no SO: {snap.cpu.process_count}")
 
         if snap.cpu.temperature.is_available and snap.cpu.temperature.value is not None:
             self._cpu_temp_lbl.configure(text=f"• Temperatura: {snap.cpu.temperature.value:.1f} °C [ACPI]", text_color=ThemeColors.TEXT_PRIMARY)
@@ -810,8 +834,7 @@ class MainWindow(ctk.CTk):
         ram_total_str = format_bytes(snap.ram.total_bytes)
         ram_pct = snap.ram.percent
 
-        self._ram_big_val.configure(text=f"{ram_used_str} / {ram_total_str} ({ram_pct:.1f}%)")
-        self._ram_progress.set(ram_pct / 100.0)
+        self._ram_gauge.set_value(ram_pct, max_value=100.0, display_text=f"{ram_pct:.1f}%")
 
         avail_gb = snap.ram.available_bytes / (1024**3)
         if ram_pct > 90.0 or avail_gb < 1.5:
@@ -822,7 +845,6 @@ class MainWindow(ctk.CTk):
             ram_status, ram_color = "Normal", ThemeColors.STATUS_OK
 
         self._ram_badge.configure(text=ram_status, text_color=ram_color)
-        self._ram_progress.configure(progress_color=ram_color)
 
         self._ram_used_lbl.configure(text=f"• Em Uso: {ram_used_str} ({ram_pct:.1f}%)")
         self._ram_avail_lbl.configure(text=f"• Disponível: {format_bytes(snap.ram.available_bytes)}")
@@ -830,14 +852,26 @@ class MainWindow(ctk.CTk):
 
         swap_used_str = format_bytes(snap.ram.swap_used_bytes)
         swap_tot_str = format_bytes(snap.ram.swap_total_bytes)
-        self._ram_swap_lbl.configure(text=f"• Arquivo de Paginação: {swap_used_str} / {swap_tot_str} ({snap.ram.swap_percent:.1f}%)")
-        self._swap_progress.set(snap.ram.swap_percent / 100.0)
+        self._ram_swap_lbl.configure(text=f"• Paginação (Swap): {swap_used_str} / {swap_tot_str} ({snap.ram.swap_percent:.1f}%)")
 
-        # 3. Discos (Reciclagem dos widgets de linha sem listras)
+        # 3. Estatísticas da Janela de 60 Segundos e Atualização do Gráfico Matplotlib
+        if hasattr(self, "_monitor") and self._monitor:
+            cpu_hist, ram_hist = self._monitor.get_history_snapshot()
+            stats = self._monitor.get_window_statistics()
+            self._perf_chart.update_chart(cpu_hist, ram_hist)
+
+            self._cpu_stats_lbl.configure(
+                text=f"• Janela 60s: Média {stats['cpu_avg']:.1f}% | Pico {stats['cpu_max']:.1f}%"
+            )
+            self._ram_stats_lbl.configure(
+                text=f"• Janela 60s: Média {stats['ram_avg']:.1f}% | Pico {stats['ram_max']:.1f}%"
+            )
+
+        # 4. Discos (Reciclagem dos widgets com mini RadialGauges)
         for disk in snap.disks:
             self._create_or_update_disk_row(disk)
 
-        # 4. GPU
+        # 5. GPU
         self._gpu_name_lbl.configure(text=f"• GPU: {snap.gpu.name}")
         driver_txt = snap.gpu.driver_version or "Padrão do Sistema"
         self._gpu_driver_lbl.configure(text=f"• Driver: {driver_txt}")
@@ -854,12 +888,12 @@ class MainWindow(ctk.CTk):
         else:
             self._gpu_temp_lbl.configure(text="• Temperatura GPU: Sensor indisponível")
 
-        # 5. Sistema
+        # 6. Sistema
         self._sys_os_lbl.configure(text=f"• Sistema: {snap.os_name}")
         self._sys_build_lbl.configure(text=f"• Compilação: {snap.os_build} ({snap.architecture})")
         self._sys_uptime_lbl.configure(text=f"• Tempo de Atividade: {format_uptime(snap.uptime_seconds)}")
 
-        # 6. Top Processos (atualização direta das 6 linhas)
+        # 7. Top Processos (atualização direta das 6 linhas)
         for idx, row_widgets in enumerate(self._proc_rows):
             if idx < len(procs):
                 p = procs[idx]
@@ -872,41 +906,66 @@ class MainWindow(ctk.CTk):
                 row_widgets["mem"].configure(text="--  ")
 
     def _create_or_update_disk_row(self, disk: DiskPartitionMetrics) -> None:
-        """Cria ou atualiza uma linha de partição de disco garantindo reciclagem e sem listras."""
+        """Cria ou atualiza uma linha de partição de disco garantindo reciclagem com mini RadialGauge."""
         key = disk.mountpoint
         if key not in self._disk_widget_rows:
-            row_frame = ctk.CTkFrame(self._disks_container, fg_color="transparent")
+            row_frame = ctk.CTkFrame(self._disks_container, fg_color="#141E2B", corner_radius=6)
             row_frame.pack(fill="x", pady=4)
-            top_r = ctk.CTkFrame(row_frame, fg_color="transparent")
+
+            gauge = RadialGauge(
+                row_frame,
+                size=56,
+                stroke_width=5,
+                compact=True,
+                default_accent_color=ThemeColors.STATUS_OK,
+                fg_color="#141E2B",
+            )
+            gauge.pack(side="left", padx=(8, 12), pady=6)
+            gauge.set_tooltip(lambda k=key: self._get_disk_tooltip_text(k))
+            Tooltip(row_frame, lambda k=key: self._get_disk_tooltip_text(k))
+
+            info_col = ctk.CTkFrame(row_frame, fg_color="transparent")
+            info_col.pack(side="left", fill="both", expand=True, padx=(0, 12), pady=6)
+
+            top_r = ctk.CTkFrame(info_col, fg_color="transparent")
             top_r.pack(fill="x")
             lbl_title = ctk.CTkLabel(top_r, text="", font=(Typography.FONT_FAMILY, 11, "bold"), text_color=ThemeColors.TEXT_PRIMARY)
             lbl_title.pack(side="left")
             lbl_sub = ctk.CTkLabel(top_r, text="", font=Typography.caption(), text_color=ThemeColors.TEXT_MUTED)
             lbl_sub.pack(side="right")
-            p_bar = ctk.CTkProgressBar(
-                row_frame,
-                height=8,
-                corner_radius=4,
-                border_width=0,
-                fg_color="#141E2B",
-                progress_color=ThemeColors.STATUS_OK,
-            )
-            p_bar.pack(fill="x", pady=(2, 6))
-            self._disk_widget_rows[key] = {"title": lbl_title, "sub": lbl_sub, "bar": p_bar}
+
+            lbl_detail = ctk.CTkLabel(info_col, text="", font=Typography.caption(), text_color=ThemeColors.TEXT_INACTIVE, anchor="w")
+            lbl_detail.pack(fill="x", pady=(2, 0))
+
+            self._disk_widget_rows[key] = {
+                "title": lbl_title,
+                "sub": lbl_sub,
+                "detail": lbl_detail,
+                "gauge": gauge,
+            }
 
         widgets = self._disk_widget_rows[key]
         widgets["title"].configure(text=f"Unidade ({disk.device}) [{disk.fstype}]")
         free_str = format_bytes(disk.free_bytes)
         tot_str = format_bytes(disk.total_bytes)
-        widgets["sub"].configure(text=f"{free_str} livres de {tot_str} ({disk.percent:.1f}% usado)")
+        used_str = format_bytes(disk.used_bytes)
+        widgets["sub"].configure(text=f"{free_str} livres de {tot_str}")
+        widgets["detail"].configure(
+            text=f"Espaço ocupado: {used_str} ({disk.percent:.1f}%) • Ponto de montagem: {disk.mountpoint}"
+        )
 
         p_color = ThemeColors.STATUS_OK
         if disk.percent > 90.0 or (disk.free_bytes / (1024**3)) < 15.0:
             p_color = ThemeColors.STATUS_ERROR
         elif disk.percent > 80.0:
             p_color = ThemeColors.STATUS_WARN
-        widgets["bar"].configure(progress_color=p_color)
-        widgets["bar"].set(disk.percent / 100.0)
+
+        widgets["gauge"].set_value(
+            disk.percent,
+            max_value=100.0,
+            display_text=f"{round(disk.percent)}%",
+            force_color=p_color,
+        )
 
     def _update_diagnostics_widgets(self, snap: SystemSnapshot) -> None:
         """Atualiza a página de Diagnóstico."""
@@ -1017,6 +1076,79 @@ class MainWindow(ctk.CTk):
             ram_max = max(self._session_ram_samples)
             self._hist_ram_avg_lbl.configure(text=f"• Média de Uso: {ram_avg:.1f} %")
             self._hist_ram_max_lbl.configure(text=f"• Pico Máximo Registrado: {ram_max:.1f} %")
+
+    def _get_cpu_tooltip_text(self) -> str:
+        """Retorna texto descritivo para tooltip do indicador de CPU."""
+        if not self._current_snapshot:
+            return "Processador: Aguardando dados..."
+        c = self._current_snapshot.cpu
+        freq_str = f"{c.frequency_current_mhz:.0f} MHz" if c.frequency_current_mhz else "N/A"
+        return (
+            f"Processador: {c.model_name or 'Detectado'}\n"
+            f"Carga Total: {c.total_percent:.1f}%\n"
+            f"Frequência Atual: {freq_str}\n"
+            f"Topologia: {c.physical_cores} Físicos / {c.logical_cores} Lógicos"
+        )
+
+    def _get_ram_tooltip_text(self) -> str:
+        """Retorna texto descritivo para tooltip do indicador de RAM."""
+        if not self._current_snapshot:
+            return "Memória RAM: Aguardando dados..."
+        r = self._current_snapshot.ram
+        used = format_bytes(r.used_bytes)
+        avail = format_bytes(r.available_bytes)
+        total = format_bytes(r.total_bytes)
+        swap_used = format_bytes(r.swap_used_bytes)
+        swap_tot = format_bytes(r.swap_total_bytes)
+        return (
+            f"Memória RAM: {r.percent:.1f}% em uso\n"
+            f"Utilizada: {used} de {total}\n"
+            f"Disponível Real: {avail}\n"
+            f"Arquivo de Paginação (Swap): {swap_used} / {swap_tot} ({r.swap_percent:.1f}%)"
+        )
+
+    def _get_core_tooltip_text(self, core_idx: int) -> str:
+        """Retorna texto descritivo para tooltip de cada núcleo lógico."""
+        if not self._current_snapshot or core_idx >= len(self._current_snapshot.cpu.per_cpu_percent):
+            return f"Núcleo Lógico #{core_idx + 1}: Sem dados"
+        pct = self._current_snapshot.cpu.per_cpu_percent[core_idx]
+        return f"Núcleo Lógico #{core_idx + 1}\nCarga Instantânea: {pct:.1f}%"
+
+    def _get_disk_tooltip_text(self, mountpoint: str) -> str:
+        """Retorna texto descritivo para tooltip de partição de disco."""
+        if not self._current_snapshot:
+            return f"Partição {mountpoint}: Aguardando dados..."
+        for d in self._current_snapshot.disks:
+            if d.mountpoint == mountpoint:
+                free = format_bytes(d.free_bytes)
+                tot = format_bytes(d.total_bytes)
+                used = format_bytes(d.used_bytes)
+                return (
+                    f"Partição: {d.mountpoint} ({d.device})\n"
+                    f"Sistema de Arquivos: {d.fstype}\n"
+                    f"Uso: {d.percent:.1f}%\n"
+                    f"Espaço Ocupado: {used}\n"
+                    f"Espaço Livre: {free} de {tot}"
+                )
+        return f"Partição {mountpoint}"
+
+    def _get_status_tooltip_text(self) -> str:
+        """Retorna texto descritivo do badge de integridade global."""
+        if not self._current_snapshot:
+            return "Monitoramento: Inicializando diagnóstico de recursos..."
+        cpu_pct = self._current_snapshot.cpu.total_percent
+        ram_pct = self._current_snapshot.ram.percent
+        if cpu_pct > 85.0 or ram_pct > 90.0:
+            status = "Sobrecarga Crítica detectada"
+        elif cpu_pct > 70.0 or ram_pct > 80.0:
+            status = "Consumo Elevado de recursos"
+        else:
+            status = "Sistema Saudável e Estável"
+        return (
+            f"Condição Global: {status}\n"
+            f"CPU: {cpu_pct:.1f}% | RAM: {ram_pct:.1f}%\n"
+            "Monitoramento contínuo em segundo plano (sub-1% CPU)."
+        )
 
     def destroy(self) -> None:
         """Finaliza a janela parando a thread assíncrona e timers pendentes."""
