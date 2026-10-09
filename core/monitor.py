@@ -74,6 +74,30 @@ class MonitorService:
         with self._lock:
             return self._latest_snapshot, list(self._latest_processes)
 
+    def get_history_snapshot(self) -> tuple[list[float], list[float]]:
+        """Retorna uma cópia imutável e thread-safe do histórico recente de CPU e RAM."""
+        with self._lock:
+            return list(self.cpu_history), list(self.ram_history)
+
+    def get_window_statistics(self) -> dict[str, float]:
+        """Calcula médias, picos e leituras mínimas da janela temporal recente."""
+        with self._lock:
+            cpu_vals = list(self.cpu_history)
+            ram_vals = list(self.ram_history)
+
+        cpu_len = len(cpu_vals)
+        ram_len = len(ram_vals)
+
+        return {
+            "cpu_avg": sum(cpu_vals) / cpu_len if cpu_len > 0 else 0.0,
+            "cpu_max": max(cpu_vals) if cpu_len > 0 else 0.0,
+            "cpu_min": min(cpu_vals) if cpu_len > 0 else 0.0,
+            "ram_avg": sum(ram_vals) / ram_len if ram_len > 0 else 0.0,
+            "ram_max": max(ram_vals) if ram_len > 0 else 0.0,
+            "ram_min": min(ram_vals) if ram_len > 0 else 0.0,
+            "samples_count": float(cpu_len),
+        }
+
     def _worker_loop(self) -> None:
         """Loop executado em thread separada do sistema operacional."""
         try:
@@ -92,9 +116,12 @@ class MonitorService:
                 try:
                     snapshot = self._collector.collect_snapshot()
 
-                    # Atualiza buffer circular
-                    self.cpu_history.append(snapshot.cpu.total_percent)
-                    self.ram_history.append(snapshot.ram.percent)
+                    # Atualiza buffer circular sob trava
+                    with self._lock:
+                        self.cpu_history.append(snapshot.cpu.total_percent)
+                        self.ram_history.append(snapshot.ram.percent)
+                        self._latest_snapshot = snapshot
+                        self._latest_processes = current_procs
 
                     # Amostragem de processos a cada 3.5 segundos para baixo overhead
                     now = time.time()
@@ -109,10 +136,6 @@ class MonitorService:
                         except queue.Empty:
                             pass
                     self._queue.put((snapshot, current_procs))
-
-                    with self._lock:
-                        self._latest_snapshot = snapshot
-                        self._latest_processes = current_procs
 
                 except Exception:
                     logger.exception("Erro durante ciclo de coleta assíncrona.")

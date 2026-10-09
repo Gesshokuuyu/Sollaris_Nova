@@ -9,12 +9,35 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Não Lançado] - Em Desenvolvimento
 
-### Planejado para a Fase 2 (Dashboard Completo)
-- Gráfico histórico duplo de CPU e RAM em tempo real integrado via Matplotlib (`FigureCanvasTkAgg`).
-- Renderização visual das taxas de variação e consumo contínuo do buffer histórico de 60 segundos.
-- Refinamento visual dos ícones de processos do sistema e ordenações adicionais.
+### Planejado para a Fase 3 (Diagnóstico Explicável e Recomendações)
+- Motor avançado de regras técnicas com janelas de persistência temporal (detecção de gargalos estáveis).
+- Cartões explicativos com título, evidência numérica observada, explicação técnica, impacto, risco e reversibilidade.
+- Notificações de alerta no badge de status e limites de tolerância configuráveis.
 
 ---
+
+## [0.2.0-alpha] - 2026-10-09 (Fase 2: Dashboard, Gráficos & Medidores Tipo Gauge)
+
+### Adicionado
+- **Medidores Radiais Analógico-Digitais (`app/components/radial_gauge.py`):**
+  - Componente técnico `RadialGauge` construído sobre `tk.Canvas` puro com atualização em sub-0.05ms.
+  - Arco aberto de 240° de varredura, trilho passivo (#192331) e arco ativo colorido por carga (Azul/Verde até 70%, Amarelo até 85%, Vermelho acima de 85%).
+  - Miolo digital com tipografia Segoe UI Bold em tempo real.
+  - Variante padrão (116px) para cartões de CPU e Memória RAM.
+  - Variante compacta (56px) para cada partição detectada no cartão de discos locais.
+- **Gráfico Histórico dos Últimos 60 Segundos (`app/components/performance_chart.py`):**
+  - Gráfico em tempo real embarcado no CustomTkinter via `FigureCanvasTkAgg`.
+  - Estética Dark Minimalist combinando com os tokens do tema (`#111923`, `#0B0F14`, `#263345`).
+  - Atualização por substituição de vetores via `set_data()` e despacho assíncrono não-bloqueante com `draw_idle()`, garantindo renderização em sub-2ms.
+  - Seletores interativos em estilo pílula: `Ambos (CPU + RAM)`, `Apenas CPU` e `Apenas RAM`.
+- **Estatísticas Temporais da Janela Móvel (`core/monitor.py`):**
+  - Extração atômica e thread-safe de dados históricos com `get_history_snapshot()`.
+  - Cálculo de média móvel, leitura máxima (pico) e leitura mínima dos últimos 60 segundos com `get_window_statistics()`.
+  - Exibição de média e pico da janela diretamente nos cartões de CPU e RAM.
+- **Testes Automatizados:**
+  - `tests/test_radial_gauge.py`: 3 novos testes validando geometria de arcos, clamping de valores (0-100%) e limites cromáticos.
+  - `tests/test_charts.py`: 4 novos testes cobrindo inicialização de figura, alternância de modos, atualização de amostras (0 a 60 pontos) e cálculos matemáticos de janela.
+  - Suíte total expandida para 27 testes automatizados (100% de aprovação).
 
 ## [0.1.0-alpha] - 2026-10-09 (Fase 1: Fundação & Hardware)
 

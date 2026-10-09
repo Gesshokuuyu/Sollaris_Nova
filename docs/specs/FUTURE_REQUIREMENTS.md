@@ -23,6 +23,10 @@ Este documento registra continuamente todas as ideias, novos requisitos funciona
 | **RF-FUT-011** | Varredura de Temporários Totalmente Assíncrona | Fase 1 | Execução do `CleanerScanner` em worker thread desacoplada da GUI com callback atômico, prevenindo congelamentos em diretórios com >50.000 arquivos. | Média | Fase 1 / 4 | Entregue |
 | **RF-FUT-012** | Suporte Dinâmico a CPUs de Alta Densidade (16+ e 24+ Threads) | Fase 1 | Ajuste responsivo ou paginação dos micro-medidores de núcleos lógicos para processadores híbridos (Intel P/E cores e AMD 16C/32T). | Média | Fase 2 | Planejado |
 | **RF-FUT-013** | Padronização Anti-Aliasing para Monitores High-DPI | Fase 1 | Padronização de todas as `CTkProgressBar` para altura >= 8px e raio de canto proporcional, prevenindo artefatos visuais de linhas/listras. | Alta | Concluído (Fase 1) | Entregue |
+| **RF-FUT-014** | Interpolação e Suavização de Curvas (Spline Bezier) | Fase 2 | Opção de renderizar curvas suavizadas tipo spline nos gráficos Matplotlib para reduzir ruído visual de alta frequência em amostragens de 1s. | Média | Backlog v1.x | Aberto |
+| **RF-FUT-015** | Zoom e Pan Histórico no Canvas | Fase 2 | Ferramenta de inspeção de zoom/pan horizontal no histórico para depurar picos ocorridos há mais de 60 segundos. | Baixa | Backlog v1.x | Aberto |
+| **RF-FUT-016** | Agrupamento de Gauges para Servidores com Múltiplos Discos | Fase 2 | Grid compacto responsivo em carrossel caso a máquina possua mais de 6 unidades montadas. | Média | Backlog v1.x | Aberto |
+| **RF-FUT-017** | Modos de Acessibilidade de Cores para Daltonismo | Fase 2 | Paleta de cores alternativa para os arcos de gauge para usuários com Deuteranopia ou Protanopia. | Média | Backlog v1.x | Aberto |
 
 ---
 
@@ -35,8 +39,10 @@ Este documento registra continuamente todas as ideias, novos requisitos funciona
 - **Gargalos de CPU/Processos:** O overhead de instanciar objetos `psutil.Process` em loop foi eliminado via Win32 ctypes (`CreateToolhelp32Snapshot`), reduzindo o tempo de 1.118 ms para 13 ms (`RF-FUT-009`).
 - **Feedback Visual de Recarregamento:** Implementado o sistema de loader não-bloqueante (`RF-FUT-010`) e erradicação de artefatos de renderização subpixel (`RF-FUT-013`).
 
-### Fase 2 — Dashboard Completo
-*(Espaço reservado para descobertas da Fase 2).*
+### Fase 2 — Dashboard Completo, Gráficos e Radial Gauges
+- **Renderização Sub-0.05ms com RadialGauge:** A substituição das barras horizontais por medidores radiais analógico-digitais nativos em `tk.Canvas` com arco de 240° proporcionou leitura técnica instantânea sem qualquer impacto nos 60 FPS da interface.
+- **Otimização Matplotlib TkAgg:** Constatado que chamadas a `fig.clf()` e recriação de eixos custavam 50-80ms por ciclo. Com a pré-alocação dos objetos `Line2D`, atualização por `set_data()` e despacho assíncrono via `draw_idle()`, o tempo na thread da UI caiu para menos de 2ms (`RF-007` validado).
+- **Estatísticas Temporais da Janela:** Implementação de médias e picos da janela móvel de 60 segundos com `deque(maxlen=60)` sob lock para enriquecer os cartões de CPU e RAM sem vazamentos de memória.
 
 ### Fase 3 — Diagnóstico e Recomendações
 *(Espaço reservado para descobertas da Fase 3).*
