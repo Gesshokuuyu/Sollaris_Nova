@@ -23,10 +23,14 @@ Este documento registra continuamente todas as ideias, novos requisitos funciona
 | **RF-FUT-011** | Varredura de Temporários Totalmente Assíncrona | Fase 1 | Execução do `CleanerScanner` em worker thread desacoplada da GUI com callback atômico, prevenindo congelamentos em diretórios com >50.000 arquivos. | Média | Fase 1 / 4 | Entregue |
 | **RF-FUT-012** | Suporte Dinâmico a CPUs de Alta Densidade (16+ e 24+ Threads) | Fase 1 | Ajuste responsivo ou paginação dos micro-medidores de núcleos lógicos para processadores híbridos (Intel P/E cores e AMD 16C/32T). | Média | Fase 2 | Planejado |
 | **RF-FUT-013** | Padronização Anti-Aliasing para Monitores High-DPI | Fase 1 | Padronização de todas as `CTkProgressBar` para altura >= 8px e raio de canto proporcional, prevenindo artefatos visuais de linhas/listras. | Alta | Concluído (Fase 1) | Entregue |
-| **RF-FUT-014** | Interpolação e Suavização de Curvas (Spline Bezier) | Fase 2 | Opção de renderizar curvas suavizadas tipo spline nos gráficos Matplotlib para reduzir ruído visual de alta frequência em amostragens de 1s. | Média | Backlog v1.x | Aberto |
+| **RF-FUT-014** | Interpolação e Suavização de Curvas (Filtro Hanning) | Fase 2 | Interpolação densa a 120 pontos com filtro ponderado de Hanning de 5 pontos, eliminando arestas serrilhadas mantendo rigor de 0% a 100%. | Alta | Concluído (Fase 2) | Entregue |
 | **RF-FUT-015** | Zoom e Pan Histórico no Canvas | Fase 2 | Ferramenta de inspeção de zoom/pan horizontal no histórico para depurar picos ocorridos há mais de 60 segundos. | Baixa | Backlog v1.x | Aberto |
 | **RF-FUT-016** | Agrupamento de Gauges para Servidores com Múltiplos Discos | Fase 2 | Grid compacto responsivo em carrossel caso a máquina possua mais de 6 unidades montadas. | Média | Backlog v1.x | Aberto |
 | **RF-FUT-017** | Modos de Acessibilidade de Cores para Daltonismo | Fase 2 | Paleta de cores alternativa para os arcos de gauge para usuários com Deuteranopia ou Protanopia. | Média | Backlog v1.x | Aberto |
+| **RF-FUT-018** | Hover Interativo e Cursor com Leitura Temporal no Gráfico | Fase 2 | Rastreamento do mouse via Matplotlib com linha guia vertical, marcadores pontuais e badge temporal dinâmico (`[ -XXs ]`). | Alta | Concluído (Fase 2) | Entregue |
+| **RF-FUT-019** | Identificação Visual de Recursos e Sombra sob Curvas | Fase 2 | Preenchimento translúcido sob as curvas (`fill_between`) e badges dedicados coloridos de status (`● CPU: XX%`, `● RAM: YY%`). | Média | Concluído (Fase 2) | Entregue |
+| **RF-FUT-020** | Sistema de Dicas Contextuais Flutuantes (`Tooltip`) | Fase 2 | Componente nativo de balão contextual `Tooltip` com posicionamento por cursor (`winfo_pointerxy`) em gauges, núcleos e discos. | Alta | Concluído (Fase 2) | Entregue |
+| **RF-FUT-021** | Modularização Arquitetural de Páginas (`app/pages/`) | Fase 2 | Desacoplamento da janela monolítica em 7 páginas modulares com ciclo de vida isolado (`OverviewPage`, `DiagnosticsPage`, etc.). | Alta | Concluído (Fase 2) | Entregue |
 
 ---
 
@@ -42,6 +46,11 @@ Este documento registra continuamente todas as ideias, novos requisitos funciona
 ### Fase 2 — Dashboard Completo, Gráficos e Radial Gauges
 - **Renderização Sub-0.05ms com RadialGauge:** A substituição das barras horizontais por medidores radiais analógico-digitais nativos em `tk.Canvas` com arco de 240° proporcionou leitura técnica instantânea sem qualquer impacto nos 60 FPS da interface.
 - **Otimização Matplotlib TkAgg:** Constatado que chamadas a `fig.clf()` e recriação de eixos custavam 50-80ms por ciclo. Com a pré-alocação dos objetos `Line2D`, atualização por `set_data()` e despacho assíncrono via `draw_idle()`, o tempo na thread da UI caiu para menos de 2ms (`RF-007` validado).
+- **Fluidez Matemática com Filtro de Hanning:** Implementado `_smooth_data()` com interpolação densa por `np.interp` (120 pontos) e filtro ponderado de Hanning de 5 pontos, garantindo curvas orgânicas sem saltos bruscos (`RF-FUT-014`).
+- **Hover Interativo e Cursor no Histórico:** Rastreamento do mouse com linha guia vertical, marcadores circulares sobre as curvas e leitura temporal instantânea do segundo apontado (`RF-FUT-018`).
+- **Identificação Visual Diferenciada:** Áreas sombreadas com `fill_between()` e badges dedicados com a cor correspondente de cada curva (`RF-FUT-019`).
+- **Tooltips Técnicos em Toda a UI:** Componente nativo [`Tooltip`](file:///d:/GitHub/Sollaris_Nova/app/components/tooltip.py) integrado aos medidores radiais, chips de núcleos lógicos, unidades de disco e badge de status (`RF-FUT-020`).
+- **Modularização de Páginas (`app/pages/`):** Arquitetura desacoplada com 7 páginas isoladas, reduzindo `MainWindow` de 1.167 linhas para 328 linhas (`RF-FUT-021`).
 - **Estatísticas Temporais da Janela:** Implementação de médias e picos da janela móvel de 60 segundos com `deque(maxlen=60)` sob lock para enriquecer os cartões de CPU e RAM sem vazamentos de memória.
 
 ### Fase 3 — Diagnóstico e Recomendações

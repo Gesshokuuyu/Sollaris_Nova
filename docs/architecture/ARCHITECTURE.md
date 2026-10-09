@@ -38,7 +38,11 @@ A arquitetura adota uma separação estrita de responsabilidades em camadas desa
 
 ### 2.1 Camada de Apresentação (`app/`)
 - **Tecnologia:** CustomTkinter + Matplotlib (FigureCanvasTkAgg).
-- **Regra de Ouro:** A interface **nunca** faz chamadas diretas ao sistema operacional (`psutil`, `wmi`, `subprocess`, etc.).
+- **Arquitetura Modular:**
+  - `app/window.py`: Orquestrador central que gerencia o shell da janela, barra lateral e despacho de eventos (reduzido a ~300 linhas).
+  - `app/pages/`: 7 telas com ciclo de vida desacoplado (`OverviewPage`, `DiagnosticsPage`, `CleanerPage`, `StartupPage`, `GameModePage`, `HistoryPage`, `SettingsPage`).
+  - `app/components/`: Componentes técnicos reutilizáveis (`RadialGauge`, `PerformanceChart`, `Tooltip`, `Sidebar`).
+- **Regra de Ouro:** A interface **nunca** faz chamadas bloqueantes ao sistema operacional (`psutil`, `wmi`, etc.).
 - Toda atualização visual é orientada a eventos. A interface consome objetos de dados puros (`dataclasses`) emitidos pelo `MonitorService`.
 - Todas as mutações da árvore de widgets do Tkinter ocorrem obrigatoriamente na thread principal via mecanismo `root.after(0, ...)`.
 

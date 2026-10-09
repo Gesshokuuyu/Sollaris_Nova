@@ -114,9 +114,21 @@ Para verificar as bibliotecas e a detecção de hardware diretamente pelo termin
 ```
 Sollaris_Nova/
 ├── app/                        # Camada de Interface Gráfica (CustomTkinter)
-│   ├── components/             # Sidebar técnica e componentes reutilizáveis
-│   ├── theme.py                # Tokens de cores e tipografia Segoe UI
-│   └── window.py               # Janela principal e reciclagem de widgets
+│   ├── components/             # Componentes de instrumentação técnica
+│   │   ├── performance_chart.py # Gráfico Matplotlib 60s com curvas fluidas e hover
+│   │   ├── radial_gauge.py     # Medidores analógico-digitais em Canvas nativo
+│   │   ├── tooltip.py          # Dicas contextuais flutuantes por cursor
+│   │   └── sidebar.py          # Barra de navegação lateral com ícones técnicos
+│   ├── pages/                  # Páginas modulares desacopladas
+│   │   ├── overview.py         # Visão geral e telemetria de hardware
+│   │   ├── diagnostics.py      # Diagnóstico explicável do sistema
+│   │   ├── cleaner.py          # Varredura não-destrutiva de temporários
+│   │   ├── startup.py          # Gerenciamento de inicialização do Windows
+│   │   ├── game_mode.py        # Perfis operacionais e modos de energia
+│   │   ├── history.py          # Histórico acumulado e métricas da sessão
+│   │   └── settings.py         # Parâmetros de monitoramento e sobre
+│   ├── theme.py                # Tokens de cores e tipografia Segoe UI Dark
+│   └── window.py               # Orquestrador da janela e loop de eventos (60 FPS)
 ├── core/                       # Núcleo de Coleta e Lógica de Negócio
 │   ├── hardware.py             # Coletor de hardware (Kernel32, psutil, WMI)
 │   ├── monitor.py              # Thread assíncrona de monitoramento
