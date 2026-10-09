@@ -9,34 +9,30 @@ Este documento estabelece o modelo oficial de desenvolvimento contínuo, ciclo d
 Adotamos um modelo híbrido derivado do **Git Flow** adaptado para produtos desktop modernos com suporte estendido (LTS) e versões de entrega contínua.
 
 ```mermaid
-gitGraph
-   commit id: "v0.1.0-setup"
-   branch lts
-   checkout main
-   branch develop
-   checkout develop
-   branch feature/rf-001-cpu
-   commit id: "feat: add cpu collector"
-   commit id: "test: unit tests cpu"
-   checkout develop
-   merge feature/rf-001-cpu
-   branch testing
-   checkout testing
-   merge develop
-   commit id: "test: qa acceptance"
-   checkout main
-   merge testing id: "v0.1.0-mvp" tag: "v0.1.0"
-   checkout lts
-   merge main id: "sync lts"
-   checkout main
-   branch hotfix/fix-sensor
-   commit id: "fix: sensor guard"
-   checkout main
-   merge hotfix/fix-sensor tag: "v0.1.1"
-   checkout lts
-   merge hotfix/fix-sensor
-   checkout develop
-   merge hotfix/fix-sensor
+flowchart TD
+    subgraph Temporarias["Branches de Trabalho (Temporárias)"]
+        direction TB
+        FEAT["feature/*<br>(Novas Funcionalidades)"]
+        FIX["fix/*<br>(Correções de Bugs)"]
+        HOTFIX["hotfix/*<br>(Correções Emergenciais)"]
+    end
+
+    subgraph Permanentes["Branches Permanentes (Ciclo de Vida)"]
+        DEV["develop<br>(Integração de Desenvolvimento)"]
+        TEST["testing<br>(Homologação e QA)"]
+        MAIN["main<br>(Releases Estáveis / Produção)"]
+        LTS["lts<br>(Suporte Estendido a Longo Prazo)"]
+    end
+
+    FEAT -->|"Pull Request aprovado"| DEV
+    FIX -->|"Pull Request aprovado"| DEV
+    DEV -->|"Freeze de Versão (release/*)"| TEST
+    TEST -->|"Critérios de Aceite Aprovados"| MAIN
+    MAIN -->|"Sync de Versão Estável"| LTS
+
+    HOTFIX -->|"Hotfix Emergencial"| MAIN
+    HOTFIX -->|"Backport de Segurança"| LTS
+    HOTFIX -->|"Sincronização"| DEV
 ```
 
 ---
