@@ -31,6 +31,7 @@ Este documento registra continuamente todas as ideias, novos requisitos funciona
 | **RF-FUT-019** | Identificação Visual de Recursos e Sombra sob Curvas | Fase 2 | Preenchimento translúcido sob as curvas (`fill_between`) e badges dedicados coloridos de status (`● CPU: XX%`, `● RAM: YY%`). | Média | Concluído (Fase 2) | Entregue |
 | **RF-FUT-020** | Sistema de Dicas Contextuais Flutuantes (`Tooltip`) | Fase 2 | Componente nativo de balão contextual `Tooltip` com posicionamento por cursor (`winfo_pointerxy`) em gauges, núcleos e discos. | Alta | Concluído (Fase 2) | Entregue |
 | **RF-FUT-021** | Modularização Arquitetural de Páginas (`app/pages/`) | Fase 2 | Desacoplamento da janela monolítica em 7 páginas modulares com ciclo de vida isolado (`OverviewPage`, `DiagnosticsPage`, etc.). | Alta | Concluído (Fase 2) | Entregue |
+| **RF-FUT-022** | Relator Técnico de Sessão / Gravador Contínuo (Flight Recorder) | Fase 3 | Botão de gravação contínua sob demanda gerando log estruturado com picos, alertas e métricas para análise pós-sessão. | Alta | Fase 3 | Planejado |
 
 ---
 
@@ -54,7 +55,7 @@ Este documento registra continuamente todas as ideias, novos requisitos funciona
 - **Estatísticas Temporais da Janela:** Implementação de médias e picos da janela móvel de 60 segundos com `deque(maxlen=60)` sob lock para enriquecer os cartões de CPU e RAM sem vazamentos de memória.
 
 ### Fase 3 — Diagnóstico e Recomendações
-*(Espaço reservado para descobertas da Fase 3).*
+- **Relator Técnico de Sessão / Gravador Contínuo (`RF-FUT-022`):** Demanda de engenharia para gravação contínua acionada por botão de alternância na UI. Registra segundo a segundo amostras de CPU, frequências, núcleos, memória RAM, swap, top processos e alertas emitidos pelo motor de diagnóstico em arquivo estruturado local (`data/reports/`), com sumário executivo final ao encerrar a gravação. Não interfere no desempenho (fila thread-safe e I/O desacoplado).
 
 ---
 
