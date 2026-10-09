@@ -3,5 +3,6 @@
 from app.components.performance_chart import PerformanceChart
 from app.components.radial_gauge import RadialGauge
 from app.components.sidebar import Sidebar
+from app.components.tooltip import Tooltip
 
-__all__ = ["PerformanceChart", "RadialGauge", "Sidebar"]
+__all__ = ["PerformanceChart", "RadialGauge", "Sidebar", "Tooltip"]

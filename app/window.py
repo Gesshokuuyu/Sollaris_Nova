@@ -17,6 +17,7 @@ import customtkinter as ctk
 from app.components.performance_chart import PerformanceChart
 from app.components.radial_gauge import RadialGauge
 from app.components.sidebar import Sidebar
+from app.components.tooltip import Tooltip
 from app.theme import LayoutDimensions, ThemeColors, Typography
 from core.cleaner import CleanerScanner
 from core.diagnostics import DiagnosticEngine, FindingLevel
@@ -51,6 +52,7 @@ class MainWindow(ctk.CTk):
         self._is_destroyed = False
         self._is_loading = False
         self._last_rendered_timestamp: datetime | None = None
+        self._current_snapshot: SystemSnapshot | None = None
         self._poll_after_id: str | None = None
 
         # Estatísticas da sessão
@@ -151,6 +153,7 @@ class MainWindow(ctk.CTk):
             pady=4,
         )
         self._global_status_badge.pack(side="left", padx=(0, LayoutDimensions.PAD_MD))
+        Tooltip(self._global_status_badge, self._get_status_tooltip_text)
 
         self._refresh_btn = ctk.CTkButton(
             actions_box,
@@ -291,6 +294,7 @@ class MainWindow(ctk.CTk):
             fg_color=ThemeColors.BG_SURFACE,
         )
         self._cpu_gauge.pack(side="left", padx=(0, LayoutDimensions.PAD_MD), pady=2)
+        self._cpu_gauge.set_tooltip(self._get_cpu_tooltip_text)
 
         cpu_details = ctk.CTkFrame(cpu_body, fg_color="transparent")
         cpu_details.pack(side="left", fill="both", expand=True)
@@ -331,6 +335,8 @@ class MainWindow(ctk.CTk):
             lbl = ctk.CTkLabel(cell, text=f"N{idx+1}: 0%", font=(Typography.FONT_FAMILY, 9), text_color=ThemeColors.STATUS_OK)
             lbl.pack(padx=2, pady=1)
             self._core_chip_labels.append(lbl)
+            Tooltip(cell, lambda i=idx: self._get_core_tooltip_text(i))
+            Tooltip(lbl, lambda i=idx: self._get_core_tooltip_text(i))
 
         # 2. Cartão RAM
         self._ram_card = ctk.CTkFrame(
@@ -362,6 +368,7 @@ class MainWindow(ctk.CTk):
             fg_color=ThemeColors.BG_SURFACE,
         )
         self._ram_gauge.pack(side="left", padx=(0, LayoutDimensions.PAD_MD), pady=2)
+        self._ram_gauge.set_tooltip(self._get_ram_tooltip_text)
 
         ram_details = ctk.CTkFrame(ram_body, fg_color="transparent")
         ram_details.pack(side="left", fill="both", expand=True)
@@ -761,6 +768,7 @@ class MainWindow(ctk.CTk):
 
     def _render_data_to_ui(self, snap: SystemSnapshot, procs: list[ProcessItem]) -> None:
         """Atualiza os valores dos widgets existentes sem recriá-los (0ms)."""
+        self._current_snapshot = snap
         now_str = datetime.now().astimezone().strftime("%H:%M:%S")
         self._timestamp_label.configure(text=f"Última amostragem: {now_str} • Ao Vivo")
 
@@ -913,6 +921,8 @@ class MainWindow(ctk.CTk):
                 fg_color="#141E2B",
             )
             gauge.pack(side="left", padx=(8, 12), pady=6)
+            gauge.set_tooltip(lambda k=key: self._get_disk_tooltip_text(k))
+            Tooltip(row_frame, lambda k=key: self._get_disk_tooltip_text(k))
 
             info_col = ctk.CTkFrame(row_frame, fg_color="transparent")
             info_col.pack(side="left", fill="both", expand=True, padx=(0, 12), pady=6)
@@ -1066,6 +1076,79 @@ class MainWindow(ctk.CTk):
             ram_max = max(self._session_ram_samples)
             self._hist_ram_avg_lbl.configure(text=f"• Média de Uso: {ram_avg:.1f} %")
             self._hist_ram_max_lbl.configure(text=f"• Pico Máximo Registrado: {ram_max:.1f} %")
+
+    def _get_cpu_tooltip_text(self) -> str:
+        """Retorna texto descritivo para tooltip do indicador de CPU."""
+        if not self._current_snapshot:
+            return "Processador: Aguardando dados..."
+        c = self._current_snapshot.cpu
+        freq_str = f"{c.frequency_current_mhz:.0f} MHz" if c.frequency_current_mhz else "N/A"
+        return (
+            f"Processador: {c.model_name or 'Detectado'}\n"
+            f"Carga Total: {c.total_percent:.1f}%\n"
+            f"Frequência Atual: {freq_str}\n"
+            f"Topologia: {c.physical_cores} Físicos / {c.logical_cores} Lógicos"
+        )
+
+    def _get_ram_tooltip_text(self) -> str:
+        """Retorna texto descritivo para tooltip do indicador de RAM."""
+        if not self._current_snapshot:
+            return "Memória RAM: Aguardando dados..."
+        r = self._current_snapshot.ram
+        used = format_bytes(r.used_bytes)
+        avail = format_bytes(r.available_bytes)
+        total = format_bytes(r.total_bytes)
+        swap_used = format_bytes(r.swap_used_bytes)
+        swap_tot = format_bytes(r.swap_total_bytes)
+        return (
+            f"Memória RAM: {r.percent:.1f}% em uso\n"
+            f"Utilizada: {used} de {total}\n"
+            f"Disponível Real: {avail}\n"
+            f"Arquivo de Paginação (Swap): {swap_used} / {swap_tot} ({r.swap_percent:.1f}%)"
+        )
+
+    def _get_core_tooltip_text(self, core_idx: int) -> str:
+        """Retorna texto descritivo para tooltip de cada núcleo lógico."""
+        if not self._current_snapshot or core_idx >= len(self._current_snapshot.cpu.per_cpu_percent):
+            return f"Núcleo Lógico #{core_idx + 1}: Sem dados"
+        pct = self._current_snapshot.cpu.per_cpu_percent[core_idx]
+        return f"Núcleo Lógico #{core_idx + 1}\nCarga Instantânea: {pct:.1f}%"
+
+    def _get_disk_tooltip_text(self, mountpoint: str) -> str:
+        """Retorna texto descritivo para tooltip de partição de disco."""
+        if not self._current_snapshot:
+            return f"Partição {mountpoint}: Aguardando dados..."
+        for d in self._current_snapshot.disks:
+            if d.mountpoint == mountpoint:
+                free = format_bytes(d.free_bytes)
+                tot = format_bytes(d.total_bytes)
+                used = format_bytes(d.used_bytes)
+                return (
+                    f"Partição: {d.mountpoint} ({d.device})\n"
+                    f"Sistema de Arquivos: {d.fstype}\n"
+                    f"Uso: {d.percent:.1f}%\n"
+                    f"Espaço Ocupado: {used}\n"
+                    f"Espaço Livre: {free} de {tot}"
+                )
+        return f"Partição {mountpoint}"
+
+    def _get_status_tooltip_text(self) -> str:
+        """Retorna texto descritivo do badge de integridade global."""
+        if not self._current_snapshot:
+            return "Monitoramento: Inicializando diagnóstico de recursos..."
+        cpu_pct = self._current_snapshot.cpu.total_percent
+        ram_pct = self._current_snapshot.ram.percent
+        if cpu_pct > 85.0 or ram_pct > 90.0:
+            status = "Sobrecarga Crítica detectada"
+        elif cpu_pct > 70.0 or ram_pct > 80.0:
+            status = "Consumo Elevado de recursos"
+        else:
+            status = "Sistema Saudável e Estável"
+        return (
+            f"Condição Global: {status}\n"
+            f"CPU: {cpu_pct:.1f}% | RAM: {ram_pct:.1f}%\n"
+            "Monitoramento contínuo em segundo plano (sub-1% CPU)."
+        )
 
     def destroy(self) -> None:
         """Finaliza a janela parando a thread assíncrona e timers pendentes."""

@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import logging
 import tkinter as tk
+from collections.abc import Callable
 
 import customtkinter as ctk
 
+from app.components.tooltip import Tooltip
 from app.theme import ThemeColors, Typography
 
 logger = logging.getLogger("sollaris_nova.radial_gauge")
@@ -46,6 +48,7 @@ class RadialGauge(ctk.CTkFrame):
         self._compact = compact
         self._current_value = 0.0
         self._max_value = 100.0
+        self._tooltip: Tooltip | None = None
 
         # Canvas nativo integrado
         self._gauge_canvas = tk.Canvas(
@@ -154,3 +157,13 @@ class RadialGauge(ctk.CTkFrame):
         if self._text_lbl_id is not None:
             self._label_text = label
             self._gauge_canvas.itemconfigure(self._text_lbl_id, text=label)
+
+    def set_tooltip(self, text_or_fn: str | Callable[[], str]) -> None:
+        """Configura ou atualiza a dica técnica flutuante exibida ao passar o mouse."""
+        if self._tooltip is None:
+            self._tooltip = Tooltip(self._gauge_canvas, text_or_fn)
+            self._frame_tooltip = Tooltip(self, text_or_fn)
+        else:
+            self._tooltip.set_text(text_or_fn)
+            if hasattr(self, "_frame_tooltip") and self._frame_tooltip:
+                self._frame_tooltip.set_text(text_or_fn)

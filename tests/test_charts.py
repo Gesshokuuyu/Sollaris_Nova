@@ -62,15 +62,20 @@ def test_performance_chart_data_updating() -> None:
         cpu_samples = [10.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 55.0]
         ram_samples = [40.0] * 10
         chart.update_chart(cpu_samples, ram_samples)
-        assert len(chart._line_cpu.get_xdata()) == 10
-        assert len(chart._line_ram.get_ydata()) == 10
+        # Curvas são renderizadas com 120 pontos interpolados para fluidez visual
+        assert len(chart._line_cpu.get_xdata()) == 120
+        assert len(chart._line_ram.get_ydata()) == 120
+        assert chart._cpu_data == cpu_samples
+        assert chart._ram_data == ram_samples
 
         # Atualização cheia (60 pontos)
         full_cpu = [float(i) for i in range(60)]
         full_ram = [50.0] * 60
         chart.update_chart(full_cpu, full_ram)
-        assert len(chart._line_cpu.get_xdata()) == 60
-        assert "59.0%" in chart._legend_lbl.cget("text")
+        assert len(chart._line_cpu.get_xdata()) == 120
+        assert chart._cpu_data == full_cpu
+        assert "59.0%" in chart._cpu_pill.cget("text")
+        assert "50.0%" in chart._ram_pill.cget("text")
     finally:
         root.destroy()
 
