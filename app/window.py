@@ -30,9 +30,11 @@ from app.pages import (
     StartupPage,
 )
 from app.theme import LayoutDimensions, ThemeColors, Typography
+from core.diagnostics import DiagnosticEngine
 from core.hardware import HardwareCollector, SystemSnapshot
 from core.monitor import MonitorService
 from core.processes import ProcessItem
+from core.recorder import SessionRecorder
 
 logger = logging.getLogger("sollaris_nova.window")
 
@@ -55,6 +57,7 @@ class MainWindow(ctk.CTk):
         self._last_rendered_timestamp: datetime | None = None
         self._current_snapshot: SystemSnapshot | None = None
         self._poll_after_id: str | None = None
+        self._recorder = SessionRecorder()
 
         # Estatísticas da sessão
         self._session_start_time = time.time()
@@ -182,7 +185,7 @@ class MainWindow(ctk.CTk):
     def _build_views_container(self) -> None:
         """Instancia e mapeia as páginas modulares desacopladas."""
         self._overview_page = OverviewPage(self._content_root)
-        self._diag_page = DiagnosticsPage(self._content_root)
+        self._diag_page = DiagnosticsPage(self._content_root, recorder=self._recorder, on_navigate=self._switch_view)
         self._cleaner_page = CleanerPage(self._content_root)
         self._startup_page = StartupPage(self._content_root)
         self._game_page = GameModePage(self._content_root)
@@ -234,7 +237,11 @@ class MainWindow(ctk.CTk):
             duration = int(time.time() - self._session_start_time)
             self._history_page.update_data(duration, self._session_cpu_samples, self._session_ram_samples)
         elif route_id == "diagnostics" and self._current_snapshot:
-            self._diag_page.update_data(self._current_snapshot)
+            cpu_hist, ram_hist = (None, None)
+            if hasattr(self, "_monitor") and self._monitor:
+                cpu_hist, ram_hist = self._monitor.get_history_snapshot()
+            procs = self._monitor.get_latest_data()[1] if hasattr(self, "_monitor") and self._monitor else []
+            self._diag_page.update_data(self._current_snapshot, cpu_hist, ram_hist, procs)
 
     def _set_loading_state(self, is_loading: bool) -> None:
         """Alterna a exibição do indicador visual de recarregamento (Loader)."""
@@ -326,12 +333,22 @@ class MainWindow(ctk.CTk):
             cpu_hist, ram_hist = self._monitor.get_history_snapshot()
             stats = self._monitor.get_window_statistics()
 
+        # Se o Flight Recorder estiver gravando, registra a telemetria do tick (0ms overhead)
+        if hasattr(self, "_recorder") and self._recorder and self._recorder.is_recording:
+            findings = DiagnosticEngine.evaluate_with_history(
+                snapshot=snap,
+                cpu_history=cpu_hist,
+                ram_history=ram_hist,
+                processes=procs,
+            )
+            self._recorder.record_tick(snap, procs, findings)
+
         # Sempre atualiza a Visão Geral (para manter medidores sincronizados)
         self._overview_page.update_data(snap, procs, cpu_hist, ram_hist, stats)
 
         # Atualizações condicionais dependendo da rota ativa
         if self._active_route == "diagnostics":
-            self._diag_page.update_data(snap)
+            self._diag_page.update_data(snap, cpu_hist, ram_hist, procs)
         elif self._active_route == "history":
             duration = int(time.time() - self._session_start_time)
             self._history_page.update_data(duration, self._session_cpu_samples, self._session_ram_samples)
@@ -374,8 +391,12 @@ class MainWindow(ctk.CTk):
         logger.info("Intervalo do MonitorService alterado para %.1f s", sec)
 
     def destroy(self) -> None:
-        """Finaliza a janela parando a thread assíncrona e timers pendentes."""
+        """Finaliza a janela parando a thread assíncrona, gravador e timers pendentes."""
         self._is_destroyed = True
+        if hasattr(self, "_recorder") and self._recorder and self._recorder.is_recording:
+            with contextlib.suppress(Exception):
+                self._recorder.stop_session()
+
         if self._poll_after_id:
             try:
                 self.after_cancel(self._poll_after_id)
