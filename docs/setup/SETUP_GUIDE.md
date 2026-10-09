@@ -14,14 +14,20 @@ Este documento fornece as instruções para configurar o ambiente de desenvolvim
 
 ---
 
-## 2. Execução Zero-Touch (Automática com 1 Clique)
+## 2. Execução Zero-Touch e Atalho na Área de Trabalho (Desktop)
 
-Você **não precisa** rodar comandos manuais de criação de ambiente ou ativação.
+Você **não precisa** abrir terminais nem conviver com janelas pretas de console.
 
-Basta dar **duplo clique no arquivo `run.bat`** (ou executar `.\run.ps1` no PowerShell):
-1. O launcher detecta se o ambiente `.venv` já existe com Python 3.14.
-2. Se não existir, ele cria a `.venv` e instala todas as dependências automaticamente em segundo plano.
-3. Inicia o aplicativo diretamente.
+### Opção A (Recomendada): Ícone Oficial no Desktop
+1. Dê um duplo clique em `create_desktop_shortcut.bat` (ou execute `.\create_desktop_shortcut.ps1`).
+2. Isso cria o atalho oficial com ícone personalizado na sua **Área de Trabalho** (`Sollaris Nova.lnk`) e na raiz do projeto.
+3. Ao clicar no ícone, a aplicação abre de forma **100% silenciosa** via `pythonw.exe`, sem abrir nenhuma janela de prompt de comando.
+
+### Opção B: Lançador Silencioso Direto
+- Dê um duplo clique em `launch_silent.vbs`.
+
+### Opção C: Lançador Batch no Terminal
+- Dê um duplo clique em `run.bat` (ou execute `.\run.ps1` no PowerShell).
 
 ---
 

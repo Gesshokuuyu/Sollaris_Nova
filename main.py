@@ -8,6 +8,8 @@ import argparse
 import logging
 import platform
 import sys
+import tkinter as tk
+from pathlib import Path
 from typing import NoReturn
 
 import customtkinter as ctk
@@ -55,6 +57,13 @@ def launch_gui() -> None:
     root.geometry(f"{LayoutDimensions.WINDOW_DEFAULT_WIDTH}x{LayoutDimensions.WINDOW_DEFAULT_HEIGHT}")
     root.minsize(LayoutDimensions.WINDOW_MIN_WIDTH, LayoutDimensions.WINDOW_MIN_HEIGHT)
     root.configure(fg_color=ThemeColors.BG_MAIN)
+
+    icon_path = Path(__file__).resolve().parent / "assets" / "icon.ico"
+    if icon_path.exists():
+        try:
+            root.iconbitmap(str(icon_path))
+        except (OSError, tk.TclError) as exc:
+            logger.debug("Não foi possível carregar o ícone da janela: %s", exc)
 
     center_frame = ctk.CTkFrame(
         root,

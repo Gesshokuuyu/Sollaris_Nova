@@ -67,19 +67,20 @@ Sollaris_Nova/
 
 ---
 
-## 🚀 Como Executar (1 Clique / Zero-Touch)
+## 🚀 Como Executar (Experiência Limpa / 1 Clique)
 
-Você **não precisa digitar comandos no terminal** nem configurar ambiente manualmente:
+Você **não precisa digitar comandos no terminal** nem conviver com janelas pretas de console:
 
-- **Basta dar um duplo clique em `run.bat` no Windows Explorer!**
-  - O script verifica automaticamente o ambiente `.venv`.
-  - Se for a primeira execução ou faltarem dependências, ele cria o ambiente com **Python 3.14** e instala tudo silenciosamente.
-  - Em seguida, abre a aplicação diretamente.
+- **Opção A (Mais agradável): Ícone Oficial na Área de Trabalho**
+  - Execute `create_desktop_shortcut.bat` (ou `.\create_desktop_shortcut.ps1`).
+  - Um atalho **Sollaris Nova** com ícone oficial de alta resolução será colocado no seu **Desktop** e na pasta raiz.
+  - O aplicativo abre de forma **100% silenciosa** (`pythonw.exe`), sem nenhuma janela de terminal aberta.
 
-- **Ou via terminal (PowerShell):**
-  ```powershell
-  .\run.ps1
-  ```
+- **Opção B: Lançador Silencioso Direto**
+  - Dê um duplo clique em `launch_silent.vbs`.
+
+- **Opção C: Lançador no Terminal com Logs**
+  - Dê um duplo clique em `run.bat` ou execute `.\run.ps1` no PowerShell.
 
 ---
 

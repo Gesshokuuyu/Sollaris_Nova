@@ -41,7 +41,10 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
   - `.github/PULL_REQUEST_TEMPLATE.md`: Template com checklist de DoD, vinculação obrigatória de issues e regras de qualidade.
   - `.github/workflows/ci.yml`: Pipeline de CI ativo desde já para testes e linter no Windows com Python 3.14.
   - `.github/workflows/release-build.yml`: Pipeline de empacotamento com PyInstaller (.exe) e publicação de releases preparado para ativação pós-MVP (Fase 6).
-- **Tokens de Design em Código:**
+- **Tokens de Design e Assets de Identidade:**
+  - `assets/icon.ico` e `assets/icon.png`: Criação do ícone técnico multi-resolução do projeto (16x16 até 256x256) com o tema azul e preto minimalista.
+  - `launch_silent.vbs`: Inicializador 100% silencioso via `pythonw.exe`, eliminando a exibição de janelas de terminal.
+  - `create_desktop_shortcut.bat` e `create_desktop_shortcut.ps1`: Gerador automatizado de atalho do Windows na Área de Trabalho com ícone oficial.
   - `app/theme.py`: Mapeamento centralizado de cores, fontes e dimensões do Design System para CustomTkinter.
 - **Qualidade e Testes:**
   - Criação do primeiro teste unitário de ambiente e integridade (`tests/test_environment.py`).
