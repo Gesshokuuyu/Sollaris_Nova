@@ -18,6 +18,19 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [0.2.0-alpha] - 2026-10-09 (Fase 2: Dashboard, Gráficos & Medidores Tipo Gauge)
 
+### Refatorado
+- **Modularização Arquitetural de Páginas (`app/pages/`):**
+  - Desacoplamento da janela monolítica `MainWindow` (reduzida de 1.167 linhas para 328 linhas).
+  - Criação de componentes dedicados com responsabilidade única:
+    - [`OverviewPage`](file:///d:/GitHub/Sollaris_Nova/app/pages/overview.py): telemetria, medidores radiais, gráfico e top processos (448 linhas).
+    - [`DiagnosticsPage`](file:///d:/GitHub/Sollaris_Nova/app/pages/diagnostics.py): motor explicável e cartões de avaliação (65 linhas).
+    - [`CleanerPage`](file:///d:/GitHub/Sollaris_Nova/app/pages/cleaner.py): varredura não-destrutiva de temporários e thread assíncrona (93 linhas).
+    - [`StartupPage`](file:///d:/GitHub/Sollaris_Nova/app/pages/startup.py): mapeamento de inicialização no Registro do Windows (68 linhas).
+    - [`GameModePage`](file:///d:/GitHub/Sollaris_Nova/app/pages/game_mode.py): perfis operacionais e planos de energia (74 linhas).
+    - [`HistoryPage`](file:///d:/GitHub/Sollaris_Nova/app/pages/history.py): métricas acumuladas, médias e picos da sessão (82 linhas).
+    - [`SettingsPage`](file:///d:/GitHub/Sollaris_Nova/app/pages/settings.py): configuração de cadência de telemetria e metadados (78 linhas).
+  - Adicionado `tests/test_pages.py` expandindo a suíte para 31 testes automatizados (100% de sucesso).
+
 ### Adicionado
 - **Medidores Radiais Analógico-Digitais (`app/components/radial_gauge.py`):**
   - Componente técnico `RadialGauge` construído sobre `tk.Canvas` puro com atualização em sub-0.05ms.
