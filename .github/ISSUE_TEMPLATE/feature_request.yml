@@ -1,0 +1,45 @@
+name: Solicitação de Nova Funcionalidade
+description: Sugira uma nova ferramenta técnica, melhoria de interface ou novo diagnóstico.
+title: "[FEATURE]: "
+labels: ["type:feature", "status:needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Toda sugestão deve respeitar os princípios do projeto:
+        - Segurança antes da automação
+        - Dados reais antes de recomendações
+        - Nenhuma coleta remota de dados
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Qual problema ou necessidade esta funcionalidade resolve?
+      description: Uma descrição clara de como a ferramenta atual é limitada sem este recurso.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solução Proposta
+      description: Como você imagina que esta funcionalidade deva funcionar tecnicamente e na interface.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: phase_fit
+    attributes:
+      label: Enquadramento no Roadmap
+      options:
+        - MVP (Fases 1 a 3)
+        - Versão 1.x (Limpeza / Inicialização / Perfis)
+        - Versão 2.x ou Futura
+    validations:
+      required: true
+
+  - type: textarea
+    id: risk_assessment
+    attributes:
+      label: Avaliação de Risco e Reversibilidade
+      description: Essa ação modifica o sistema do usuário? É reversível? Exige elevação de privilégios?

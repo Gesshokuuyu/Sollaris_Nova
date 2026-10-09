@@ -1,0 +1,58 @@
+name: Relatório de Bug
+description: Crie um relatório para nos ajudar a reproduzir e corrigir uma falha.
+title: "[BUG]: "
+labels: ["type:bug", "status:needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por relatar um problema! Por favor, forneça o máximo de detalhes técnicos possíveis.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descrição do Problema
+      description: Uma explicação clara e objetiva do que aconteceu.
+      placeholder: Ao iniciar o aplicativo / coletar processos...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Passos para Reproduzir
+      description: Passos exatos para provocar a ocorrência do erro.
+      value: |
+        1. Abrir o aplicativo via `run.bat`
+        2. Navegar até a aba...
+        3. Observar o erro...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamento Esperado
+      description: O que deveria ter acontecido segundo as especificações do sistema.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os_version
+    attributes:
+      label: Versão do Windows
+      options:
+        - Windows 10 (21H2 ou anterior)
+        - Windows 10 (22H2)
+        - Windows 11 (22H2 / 23H2)
+        - Windows 11 (24H2)
+        - Outra
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs e Rastreamento de Erro (Stack Trace)
+      description: Cole aqui as mensagens do terminal ou arquivos de log relevantes.
+      render: shell

@@ -1,0 +1,14 @@
+# PC Optimizer (Sollaris Nova) - Core Production Dependencies
+
+# Sistema & Monitoramento de Métricas
+psutil>=6.0.0
+
+# Interface Gráfica Desktop Moderna
+customtkinter>=5.2.0
+
+# Gráficos Históricos Integrados ao Tkinter
+matplotlib>=3.9.0
+
+# Integrações Nativas do Windows (Sensores e Hardware)
+WMI>=1.5.1; sys_platform == 'win32'
+pywin32>=306; sys_platform == 'win32'

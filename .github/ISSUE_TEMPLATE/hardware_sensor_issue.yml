@@ -1,0 +1,55 @@
+name: Problema com Sensor ou Leitura de Hardware
+description: Relate falhas na detecção de sensores térmicos, CPU, GPU ou armazenamento.
+title: "[HARDWARE/SENSOR]: "
+labels: ["type:bug", "scope:sensors", "status:needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        O PC Optimizer prioriza dados reais e nunca inventa métricas.
+        Se um sensor não está sendo detectado ou está gerando leituras incorretas, forneça as especificações do hardware.
+
+  - type: input
+    id: cpu_model
+    attributes:
+      label: Modelo do Processador (CPU)
+      placeholder: Ex: Intel Core i7-10700K / AMD Ryzen 5 5600X
+    validations:
+      required: true
+
+  - type: input
+    id: gpu_model
+    attributes:
+      label: Modelo da Placa de Vídeo (GPU)
+      placeholder: Ex: NVIDIA RTX 3060 / Intel UHD Graphics 630 / AMD Radeon RX 6600
+    validations:
+      required: true
+
+  - type: dropdown
+    id: sensor_type
+    attributes:
+      label: Sensor Afetado
+      options:
+        - Temperatura da CPU
+        - Temperatura da GPU
+        - Uso de Memória VRAM da GPU Integrada
+        - Partição de Armazenamento não detectada
+        - Frequência da CPU
+    validations:
+      required: true
+
+  - type: textarea
+    id: symptom
+    attributes:
+      label: Sintoma Observado
+      description: O aplicativo mostrou "Sensor indisponível", travou ou retornou valor anômalo?
+      placeholder: O sensor exibiu "Sensor indisponível" mesmo com o aplicativo executando como Administrador...
+    validations:
+      required: true
+
+  - type: textarea
+    id: env_output
+    attributes:
+      label: Saída do comando `main.py --check-env`
+      description: Execute `.\run.bat --check-env` e cole o resultado aqui.
+      render: shell

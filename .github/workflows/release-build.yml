@@ -1,0 +1,63 @@
+name: Release — Empacotamento e Publicação de Executável (Pós-MVP)
+
+# Este workflow automatiza o empacotamento do executável Windows e a publicação
+# no GitHub Releases. Conforme especificação, este pipeline é acionado pós-MVP
+# mediante criação de tags de release estável (ex: v1.0.0 ou v0.1.0-mvp) ou despacho manual.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      release_notes:
+        description: "Notas adicionais da versão"
+        required: false
+        default: "Release gerada manualmente via GitHub Actions."
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build PyInstaller (.exe) e Publicação no Windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: "pip"
+
+      - name: Instalar Dependências de Produção e PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller>=6.9.0
+
+      - name: Gerar Executável Independente (.exe) com PyInstaller
+        run: |
+          pyinstaller --noconfirm --onedir --windowed --name "SollarisNova" --add-data "app;app" --add-data "data;data" main.py
+
+      - name: Compactar Artefato (.zip)
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist/SollarisNova" -DestinationPath "dist/SollarisNova-Windows-x64.zip"
+          $hash = (Get-FileHash -Path "dist/SollarisNova-Windows-x64.zip" -Algorithm SHA256).Hash
+          Set-Content -Path "dist/SHA256SUMS.txt" -Value "$hash  SollarisNova-Windows-x64.zip"
+          Write-Host "SHA256: $hash"
+
+      - name: Publicar GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist/SollarisNova-Windows-x64.zip
+            dist/SHA256SUMS.txt
+          generate_release_notes: true
+          draft: false
+          prerelease: false

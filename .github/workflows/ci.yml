@@ -1,0 +1,47 @@
+name: CI — Integridade e Testes no Windows
+
+on:
+  push:
+    branches:
+      - main
+      - lts
+      - testing
+      - develop
+  pull_request:
+    branches:
+      - main
+      - lts
+      - testing
+      - develop
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Verificação de Código e Testes (Python 3.14 - Windows)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: "pip"
+
+      - name: Atualizar pip e Instalar Dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Verificação de Padrões e Linter (Ruff)
+        run: |
+          ruff check .
+
+      - name: Execução da Suíte de Testes (pytest)
+        run: |
+          pytest -v

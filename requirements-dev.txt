@@ -1,0 +1,9 @@
+# PC Optimizer (Sollaris Nova) - Development & Testing Dependencies
+-r requirements.txt
+
+# Testes Automatizados e Mocks
+pytest>=8.0.0
+pytest-mock>=3.14.0
+
+# Linter e Formatador Ultrarrápido (PEP 8)
+ruff>=0.5.0

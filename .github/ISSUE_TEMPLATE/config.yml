@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentação de Especificação
+    url: https://github.com/lucas-f-m/Sollaris_Nova/blob/main/PROJECT_SPEC.md
+    about: Consulte a especificação técnica do projeto antes de relatar dúvidas de arquitetura.
