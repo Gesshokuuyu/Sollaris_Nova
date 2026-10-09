@@ -26,13 +26,16 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
   - Eliminação de falsos positivos via persistência temporal: picos instantâneos transitórios de CPU (< 5s) são avaliados como normais (`OPTIMAL`). Alertas críticos exigem saturação sustentada comprovada (mínimo de 10 amostras consecutivas >= 85%).
   - Detecção especializada de gargalos: saturação de CPU, pressão de memória RAM, contenção de memória virtual (Swap Thrashing), esgotamento de espaço na unidade de sistema (`C:`) e identificação de processos predadores monopolizando recursos.
   - Preservação retroativa de propriedades `.description` e `.recommendation` para total compatibilidade com interfaces e testes existentes.
-- **Relator Técnico de Sessão / Gravador de Voo (`core/recorder.py`):**
+- **Relator Técnico de Sessão / Gravador de Voo Expandido (`core/recorder.py`):**
   - Gravação contínua e assíncrona de telemetria ("Flight Recorder") em arquivo de log estruturado sob demanda em `data/reports/`.
   - Arquitetura de I/O em segundo plano totalmente não-bloqueante (0ms de impacto na thread da interface gráfica) via `queue.Queue(maxsize=2000)` e thread trabalhadora daemon `SessionRecorderWriter`.
-  - Cabeçalho técnico detalhado com especificações completas de hardware da máquina, sistema operacional e uptime.
-  - Amostragem cronológica a cada tick registrando CPU, frequência, RAM física, swap, processo de maior impacto e anomalias ativas.
-  - Sumário executivo final consolidando duração monitorada, total de amostras colhidas, médias, picos máximos e contagem de eventos anômalos.
-- **Interface Revitalizada de Diagnóstico (`app/pages/diagnostics.py`):**
+  - Cabeçalho técnico altamente detalhado com inventário de hardware, contagem de processos e threads ativos no SO, clock base e inicial, temperatura (WMI), VRAM de GPU e tabela completa de partições montadas (`C:`, `D:`, etc.) com ocupação e tipo de sistema de arquivos.
+  - Amostragem cronológica a cada tick registrando CPU, clock atual, temperatura térmica, RAM física livre e utilizada, swap, top 5 processos detalhados (PID, nome, memória retida) e bloco analítico de cada anomalia ativa (evidência, causa raiz e recomendação técnica).
+  - Sumário executivo analítico consolidando duração, cadência de amostragem, mínimos, médias e picos máximos de CPU/RAM, variação de working set ($\Delta$ RAM), discriminação de anomalias por categoria, ranking dos processos mais demandantes da sessão e parecer técnico conclusivo.
+- **Interface de Diagnóstico Fluida e Sem Flickering (`app/pages/diagnostics.py`):**
+  - Eliminação completa de piscamento de tela através do padrão de Card Pooling (`FindingCardWidget`): os cards são reciclados e atualizados *in-place* via `.configure()`, impedindo o colapso e reconstrução de geometria da GUI.
+  - Memoização de assinatura de estado (`current_fingerprint`) evitando repinturas redundantes quando não há transição de severidade.
+  - Estabilização de métricas estáveis em `core/diagnostics.py` para evitar oscilações cosméticas de texto em estado nominal (`OPTIMAL`).
   - Banner superior com botão interativo de controle do Gravador de Voo (`Gravar Relatório Técnico` / `REC: MM:SS (N amostras) | Parar`).
   - Notificação pós-gravação com botão rápido para abrir o diretório `data/reports/` no Explorador de Arquivos do Windows via `os.startfile()`.
   - Pílulas de filtro por severidade com contadores dinâmicos em tempo real: `Todos (N)`, `Críticos (N)`, `Atenção (N)` e `Estáveis (N)`.

@@ -2,6 +2,9 @@
 
 Este documento detalha o planejamento arquitetural, modelos de dados, catálogo de regras técnicas, design da interface, relator contínuo de sessão e suíte de testes para a **Fase 3** do Sollaris Nova (PC Optimizer).
 
+> [!NOTE]
+> **Status da Fase 3:** Implementada, validada e homologada em `develop` com 40 testes unitários aprovados (100%), eliminando piscamento visual (0ms flicker) e gerando relatórios de voo analíticos em `data/reports/`. Consulte o documento de conclusão em [`docs/phases/PHASE_3_DIAGNOSTICS_AND_RECORDER.md`](file:///d:/GitHub/Sollaris_Nova/docs/phases/PHASE_3_DIAGNOSTICS_AND_RECORDER.md).
+
 ---
 
 ## 1. Visão Geral e Objetivos da Fase 3
