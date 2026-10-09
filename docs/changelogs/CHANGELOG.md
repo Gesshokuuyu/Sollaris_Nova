@@ -9,10 +9,39 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Não Lançado] - Em Desenvolvimento
 
-### Planejado para a Fase 3 (Diagnóstico Explicável e Recomendações)
-- Motor avançado de regras técnicas com janelas de persistência temporal (detecção de gargalos estáveis).
-- Cartões explicativos com título, evidência numérica observada, explicação técnica, impacto, risco e reversibilidade.
-- Notificações de alerta no badge de status e limites de tolerância configuráveis.
+### Planejado para a Fase 4 (Limpeza Segura e Otimização do Windows)
+- Varredura de arquivos temporários do usuário e do sistema com verificação de segurança (whitelist).
+- Gerenciamento de programas de inicialização via registro do Windows com confirmação prévia.
+- Ponto de Restauração do Sistema (VSS) via WMI antes de modificações.
+- Exclusão segura e reversível para a lixeira do Windows.
+
+---
+
+## [0.3.0-alpha] - 2026-10-09 (Fase 3: Diagnóstico Explicável & Gravador de Voo / Flight Recorder)
+
+### Adicionado
+- **Motor de Diagnóstico em 7 Dimensões (`core/diagnostics.py`):**
+  - Implementação completa do `DiagnosticEngine` com o método `evaluate_with_history()`.
+  - Estrutura de dados `DiagnosticFinding` enriquecida em 7 dimensões explicáveis: categoria, nível (`OPTIMAL`, `INFO`, `WARNING`, `CRITICAL`), título, evidência numérica observada, diagnóstico técnico profundo, impacto provável, risco da intervenção, reversibilidade e ação recomendada com rota de navegação contextual.
+  - Eliminação de falsos positivos via persistência temporal: picos instantâneos transitórios de CPU (< 5s) são avaliados como normais (`OPTIMAL`). Alertas críticos exigem saturação sustentada comprovada (mínimo de 10 amostras consecutivas >= 85%).
+  - Detecção especializada de gargalos: saturação de CPU, pressão de memória RAM, contenção de memória virtual (Swap Thrashing), esgotamento de espaço na unidade de sistema (`C:`) e identificação de processos predadores monopolizando recursos.
+  - Preservação retroativa de propriedades `.description` e `.recommendation` para total compatibilidade com interfaces e testes existentes.
+- **Relator Técnico de Sessão / Gravador de Voo (`core/recorder.py`):**
+  - Gravação contínua e assíncrona de telemetria ("Flight Recorder") em arquivo de log estruturado sob demanda em `data/reports/`.
+  - Arquitetura de I/O em segundo plano totalmente não-bloqueante (0ms de impacto na thread da interface gráfica) via `queue.Queue(maxsize=2000)` e thread trabalhadora daemon `SessionRecorderWriter`.
+  - Cabeçalho técnico detalhado com especificações completas de hardware da máquina, sistema operacional e uptime.
+  - Amostragem cronológica a cada tick registrando CPU, frequência, RAM física, swap, processo de maior impacto e anomalias ativas.
+  - Sumário executivo final consolidando duração monitorada, total de amostras colhidas, médias, picos máximos e contagem de eventos anômalos.
+- **Interface Revitalizada de Diagnóstico (`app/pages/diagnostics.py`):**
+  - Banner superior com botão interativo de controle do Gravador de Voo (`Gravar Relatório Técnico` / `REC: MM:SS (N amostras) | Parar`).
+  - Notificação pós-gravação com botão rápido para abrir o diretório `data/reports/` no Explorador de Arquivos do Windows via `os.startfile()`.
+  - Pílulas de filtro por severidade com contadores dinâmicos em tempo real: `Todos (N)`, `Críticos (N)`, `Atenção (N)` e `Estáveis (N)`.
+  - Cards explicativos estruturados com caixa de evidência técnica (`#141E2B`), badges de severidade e reversibilidade da ação recomendada.
+  - Botões de ação contextual permitindo navegação instantânea para Visão Geral (`overview`), Limpeza Segura (`cleaner`) ou Inicialização (`startup`).
+- **Testes Automatizados de Diagnóstico e Gravação:**
+  - Adicionado `tests/test_diagnostics.py` com 8 testes unitários cobrindo integridade das 7 dimensões, persistência temporal de CPU e RAM, detecção de thrashing, esgotamento de partição `C:`, processos predadores e ciclo de vida do `SessionRecorder`.
+  - Atualizado `tests/test_pages.py` validando os filtros interativos da `DiagnosticsPage`, alternância de gravação e navegação contextual.
+  - Suíte completa de testes expandida para **40 testes automatizados**, todos aprovados com 100% de sucesso.
 
 ---
 

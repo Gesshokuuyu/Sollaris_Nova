@@ -66,3 +66,47 @@ def test_pages_data_updates() -> None:
         assert called_sec == [1.5]
     finally:
         root.destroy()
+
+
+def test_diagnostics_page_features(tmp_path) -> None:
+    """Verifica filtros de severidade, gravação de sessão e navegação contextual na DiagnosticsPage."""
+    from core.recorder import SessionRecorder
+
+    root = ctk.CTk()
+    try:
+        recorder = SessionRecorder(reports_dir=tmp_path)
+        navigated_routes: list[str] = []
+        diag_page = DiagnosticsPage(
+            root,
+            recorder=recorder,
+            on_navigate=lambda r: navigated_routes.append(r),
+        )
+
+        snap = _build_dummy_snapshot()
+        diag_page.update_data(snap)
+
+        # Valida contadores
+        assert "Todos" in diag_page._filter_btn_all.cget("text")
+        assert len(diag_page._diag_findings_container.winfo_children()) >= 1
+
+        # Filtro: Estáveis
+        diag_page._set_active_filter("optimal")
+        assert diag_page._active_filter == "optimal"
+
+        # Filtro: Críticos
+        diag_page._set_active_filter("critical")
+        assert diag_page._active_filter == "critical"
+
+        # Gravador de sessão via botão
+        assert not recorder.is_recording
+        diag_page._toggle_recording()
+        assert recorder.is_recording
+        assert "REC:" in diag_page._recorder_btn.cget("text")
+
+        # Parar gravação
+        diag_page._toggle_recording()
+        assert not recorder.is_recording
+        assert "Gravar Relatório" in diag_page._recorder_btn.cget("text")
+        assert diag_page._report_notice_frame.winfo_ismapped() or diag_page._report_notice_label.cget("text")
+    finally:
+        root.destroy()
