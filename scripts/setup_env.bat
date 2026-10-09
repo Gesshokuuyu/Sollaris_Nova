@@ -1,6 +1,7 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0.."
+set "ROOT_DIR=%cd%"
 
 echo ========================================================
 echo  Configuracao de Ambiente: Sollaris Nova (Python 3.14)
@@ -14,12 +15,12 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-if not exist ".venv\Scripts\python.exe" (
+if not exist "%ROOT_DIR%\.venv\Scripts\python.exe" (
     echo [*] Criando ambiente virtual com Python 3.14...
-    py -3.14 -m venv .venv
+    py -3.14 -m venv "%ROOT_DIR%\.venv"
     if %errorlevel% neq 0 (
         echo [ERRO] Falha ao criar .venv com py -3.14. Tentando python padrao...
-        python -m venv .venv
+        python -m venv "%ROOT_DIR%\.venv"
         if %errorlevel% neq 0 (
             echo [ERRO] Nao foi possivel criar o ambiente virtual.
             pause
@@ -31,13 +32,13 @@ if not exist ".venv\Scripts\python.exe" (
 )
 
 echo [*] Atualizando pip e instalando dependencias...
-.venv\Scripts\python.exe -m pip install --upgrade pip
-.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+"%ROOT_DIR%\.venv\Scripts\python.exe" -m pip install --upgrade pip
+"%ROOT_DIR%\.venv\Scripts\python.exe" -m pip install -r "%ROOT_DIR%\requirements-dev.txt"
 
 if %errorlevel% equ 0 (
     echo.
     echo [SUCESSO] Ambiente preparado com sucesso no Python 3.14!
-    echo Para iniciar o aplicativo com um clique duplo: run.bat
+    echo Para iniciar o aplicativo: scripts\run.bat ou scripts\run.ps1
 ) else (
     echo.
     echo [ERRO] Falha ao instalar dependencias.

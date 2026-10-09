@@ -1,11 +1,11 @@
 # Cria atalhos oficiais com icone personalizado no Desktop e na raiz do projeto
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location $ScriptDir
+$ProjectRoot = Split-Path -Parent $ScriptDir
+Set-Location $ProjectRoot
 
 $DesktopPath = [Environment]::GetFolderPath("Desktop")
-# Usamos sollaris_nova.ico com caminho absoluto direto para evitar cache estatico do Windows
-$IconPath = Join-Path $ScriptDir "assets\sollaris_nova.ico"
+$IconPath = Join-Path $ProjectRoot "assets\sollaris_nova.ico"
 $SilentLauncher = Join-Path $ScriptDir "launch_silent.vbs"
 
 $WshShell = New-Object -ComObject WScript.Shell
@@ -18,21 +18,21 @@ if (Test-Path $DesktopShortcutPath) {
 $Shortcut = $WshShell.CreateShortcut($DesktopShortcutPath)
 $Shortcut.TargetPath = "wscript.exe"
 $Shortcut.Arguments = "`"$SilentLauncher`""
-$Shortcut.WorkingDirectory = $ScriptDir
+$Shortcut.WorkingDirectory = $ProjectRoot
 $Shortcut.IconLocation = "$IconPath, 0"
 $Shortcut.Description = "Sollaris Nova - PC Optimizer"
 $Shortcut.Save()
 Write-Host "[OK] Atalho criado na Area de Trabalho: $DesktopShortcutPath" -ForegroundColor Green
 
 # 2. Atalho na pasta raiz do projeto
-$RootShortcutPath = Join-Path $ScriptDir "Sollaris Nova.lnk"
+$RootShortcutPath = Join-Path $ProjectRoot "Sollaris Nova.lnk"
 if (Test-Path $RootShortcutPath) {
     Remove-Item -Force $RootShortcutPath
 }
 $RootShortcut = $WshShell.CreateShortcut($RootShortcutPath)
 $RootShortcut.TargetPath = "wscript.exe"
 $RootShortcut.Arguments = "`"$SilentLauncher`""
-$RootShortcut.WorkingDirectory = $ScriptDir
+$RootShortcut.WorkingDirectory = $ProjectRoot
 $RootShortcut.IconLocation = "$IconPath, 0"
 $RootShortcut.Description = "Sollaris Nova - PC Optimizer"
 $RootShortcut.Save()
@@ -51,6 +51,5 @@ try {
     [ShellRefresh]::SHChangeNotify(0x08000000, 0, [IntPtr]::Zero, [IntPtr]::Zero)
     Write-Host "[OK] Cache de icones do Windows atualizado." -ForegroundColor Cyan
 } catch {
-    # Fallback se Add-Type ja tiver sido carregado nesta sessao
     [ShellRefresh]::SHChangeNotify(0x08000000, 0, [IntPtr]::Zero, [IntPtr]::Zero)
 }

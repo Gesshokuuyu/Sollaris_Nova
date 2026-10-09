@@ -1,9 +1,10 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0.."
+set "ROOT_DIR=%cd%"
 title Sollaris Nova - PC Optimizer
 
-set "VENV_PYTHON=%~dp0.venv\Scripts\python.exe"
+set "VENV_PYTHON=%ROOT_DIR%\.venv\Scripts\python.exe"
 
 REM Se o ambiente virtual ja existe, inicia diretamente
 if exist "%VENV_PYTHON%" goto :LAUNCH
@@ -15,12 +16,12 @@ echo [*] Preparando ambiente isolado pela primeira vez...
 
 where py >nul 2>nul
 if %errorlevel% equ 0 (
-    py -3.14 -m venv "%~dp0.venv" 2>nul
+    py -3.14 -m venv "%ROOT_DIR%\.venv" 2>nul
     if errorlevel 1 (
-        py -m venv "%~dp0.venv"
+        py -m venv "%ROOT_DIR%\.venv"
     )
 ) else (
-    python -m venv "%~dp0.venv"
+    python -m venv "%ROOT_DIR%\.venv"
 )
 
 if not exist "%VENV_PYTHON%" (
@@ -32,7 +33,7 @@ if not exist "%VENV_PYTHON%" (
 
 echo [*] Instalando dependencias do projeto...
 "%VENV_PYTHON%" -m pip install --upgrade pip >nul 2>&1
-"%VENV_PYTHON%" -m pip install -r "%~dp0requirements-dev.txt"
+"%VENV_PYTHON%" -m pip install -r "%ROOT_DIR%\requirements-dev.txt"
 if errorlevel 1 (
     echo [ERRO] Falha ao instalar dependencias no ambiente virtual.
     pause
@@ -42,7 +43,7 @@ echo [*] Ambiente preparado com sucesso!
 echo.
 
 :LAUNCH
-"%VENV_PYTHON%" "%~dp0main.py" %*
+"%VENV_PYTHON%" "%ROOT_DIR%\main.py" %*
 if errorlevel 1 (
     echo.
     echo [AVISO] Aplicativo encerrado com codigo de erro %errorlevel%.

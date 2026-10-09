@@ -141,3 +141,15 @@ O pipeline de automação é dividido em dois estágios:
   2. Validação da assinatura e hash SHA-256 do executável gerado.
   3. Criação automática de Release no GitHub com changelog correspondente e anexo do instalador/executável compactado.
   4. Publicação na branch de distribuição e arquivo de artefatos.
+
+---
+
+## 7. Protocolo de Fechamento de Fases e Entrega de Artefatos
+
+Ao final de cada uma das 6 fases de desenvolvimento, o fechamento da branch de feature e o merge só ocorrem após o cumprimento das seguintes entregas obrigatórias:
+
+1. **Relatório Técnico da Fase (`docs/phases/PHASE_<N>_<NOME>.md`):** Detalhamento dos componentes implementados, arquitetura e decisões de engenharia.
+2. **Atualização do Catálogo de Requisitos Futuros (`docs/specs/FUTURE_REQUIREMENTS.md`):** Inclusão de novas ideias, demandas técnicas ou refinamentos identificados durante o ciclo da fase.
+3. **Atualização de Critérios de Aceite (`docs/specs/MVP_CRITERIA.md`):** Atualização do status dos itens concluídos.
+4. **Registro de Mudanças (`docs/changelogs/CHANGELOG.md`):** Atualização formal das entregas.
+5. **Artefato Interativo de Entrega:** Geração de artefato no brain do assistente para visualização direta pelo usuário.

@@ -3,8 +3,9 @@ Set WshShell = CreateObject("WScript.Shell")
 Set FSO = CreateObject("Scripting.FileSystemObject")
 
 ScriptDir = FSO.GetParentFolderName(WScript.ScriptFullName)
-VenvPythonw = ScriptDir & "\.venv\Scripts\pythonw.exe"
-MainPy = ScriptDir & "\main.py"
+ProjectRoot = FSO.GetParentFolderName(ScriptDir)
+VenvPythonw = ProjectRoot & "\.venv\Scripts\pythonw.exe"
+MainPy = ProjectRoot & "\main.py"
 RunBat = ScriptDir & "\run.bat"
 
 ' Se o ambiente virtual nao existir, executa o setup automatico via run.bat
@@ -14,7 +15,7 @@ End If
 
 ' Executa a aplicacao com pythonw.exe sem nenhuma janela de console preta (modo 0)
 If FSO.FileExists(VenvPythonw) Then
-    WshShell.CurrentDirectory = ScriptDir
+    WshShell.CurrentDirectory = ProjectRoot
     WshShell.Run Chr(34) & VenvPythonw & Chr(34) & " " & Chr(34) & MainPy & Chr(34), 0, False
 End If
 

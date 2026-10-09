@@ -77,3 +77,25 @@ Utilize o padrão **Conventional Commits**:
 - `test:` Adição ou correção de testes.
 - `chore:` Manutenção de build, dependências ou ferramentas de desenvolvimento.
 - `perf:` Melhoria de desempenho.
+
+---
+
+## 7. Protocolo Obrigatório de Fechamento de Fase (Gate de Qualidade)
+
+Ao término de qualquer fase do roadmap (Fase 1 a 6), **antes de mesclar o código ou iniciar a próxima fase**, é obrigatório cumprir o checklist de artefatos e governança:
+
+1. **Auditoria de Integridade Técnica:**
+   - `pytest -v` com 100% de aprovação.
+   - `ruff check .` limpo, sem erros de linter ou formatação.
+2. **Geração do Documento da Fase (`docs/phases/PHASE_<N>_<NOME>.md`):**
+   - Resumo detalhado do que foi construído vs escopo planejado.
+   - Decisões de arquitetura adotadas e desafios superados.
+   - Métricas e validações no Windows 10/11.
+3. **Catalogação de Novos Requisitos Futuros (`docs/specs/FUTURE_REQUIREMENTS.md`):**
+   - Toda oportunidade de melhoria, novo sensor desejado, nova ideia de recurso ou detalhe técnico descoberto durante a fase deve ser registrado formalmente neste arquivo para não haver desvio de escopo nem perda de contexto.
+4. **Atualização dos Critérios de Aceite e DoD (`docs/specs/MVP_CRITERIA.md`):**
+   - Atualização do status dos requisitos funcionais entregues na fase.
+5. **Registro de Mudanças (`docs/changelogs/CHANGELOG.md`):**
+   - Atualização do changelog consolidado e geração do registro do marco.
+6. **Apresentação ao Usuário:**
+   - Geração de artefato estruturado no brain para validação e transparência.
