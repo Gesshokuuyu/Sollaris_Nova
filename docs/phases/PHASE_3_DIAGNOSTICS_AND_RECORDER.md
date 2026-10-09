@@ -32,15 +32,20 @@ Este documento atesta a conclusão formal da **Fase 3 (Motor de Diagnóstico Exp
 
 ### 2.2 Relator Técnico de Sessão / Flight Recorder (`core/recorder.py`)
 - **I/O Não-Bloqueante (0ms de Impacto na GUI):** Utiliza fila `queue.Queue(maxsize=2000)` e uma thread trabalhadora dedicada (`SessionRecorderWriter`). A gravação de cada tick de telemetria realiza apenas um enfileiramento in-memory (`put_nowait`), consumindo menos de **0.01ms** da thread de interface.
-- **Formato Estruturado e Auditável:**
-  - **Cabeçalho:** Identificação da máquina, arquitetura, contagem de núcleos físicos/lógicos, memória total instalada, versão do sistema operacional e modelo de GPU.
-  - **Telemetria Periódica:** Linhas cronológicas registrando CPU, frequência, RAM física, uso de paginação, processo de maior impacto e anomalias ativas no instante.
-  - **Sumário Executivo:** Total de amostras coletadas, duração exata, médias e picos de CPU/RAM, contagem de alertas disparados e classificação de estabilidade final.
+- **Relatório de Profundidade Analítica:**
+  - **Cabeçalho Expandido:** Identificação da máquina, arquitetura, contagem de processos e threads ativos no SO, topologia de núcleos físicos/lógicos, clock base e clock no instante inicial, temperatura do processador (WMI), memória RAM primária e swap alocado, GPU com VRAM dedicada, driver e temperatura, além da listagem tabular detalhada de todas as unidades de armazenamento (ponto de montagem, sistema de arquivos, total, usado, livre e percentual).
+  - **Telemetria Periódica:** Linhas cronológicas registrando CPU, frequência atual, temperatura, RAM física, uso de swap, lista alinhada dos 5 processos com maior retenção de memória e bloco completo de cada anomalia ativa (título, evidência, causa raiz e recomendação técnica).
+  - **Sumário Executivo Analítico:** Consolidação de médias, picos máximos e mínimos absolutos de CPU e RAM, variação de working set durante o período (delta de memória), discriminação quantitativa de anomalias por categoria, ranking dos processos mais relevantes da sessão (memória média, pico de RAM e pico de CPU) e conclusão técnica operacional.
 - **Ciclo de Vida Resiliente:** Encerramento ordenado com sentinela `None` e esgotamento automático do buffer no fechamento da janela (`MainWindow.destroy()`).
 
-### 2.3 Interface de Diagnóstico e Controles (`app/pages/diagnostics.py`)
+### 2.3 Interface de Diagnóstico Sem Flickering (`app/pages/diagnostics.py`)
+- **Arquitetura de Reciclagem de Widgets (`FindingCardWidget`):** Substituição da recriação destrutiva (`destroy()` e recriação em cada ciclo) por um pool de cards reutilizáveis com atualização in-place.
+- **Eliminação Absoluta de Piscamento de Tela (0ms Flicker):**
+  - Textos dos labels e estados de badges são atualizados via `.configure()` somente quando há divergência de conteúdo em relação ao ciclo anterior.
+  - O container de cards não sofre retração de altura (height collapse) nem recálculo de geometria durante a transição de telemetria, garantindo fluidez e conforto visual contínuo.
+  - Memoização por fingerprint de dados (`current_fingerprint`) evita reconfigurações redundantes quando a avaliação de estabilidade não apresenta alterações.
 - **Banner com Controle do Gravador:** Botão comutável que transita entre `Gravar Relatório Técnico` e `REC: MM:SS (N amostras) | Parar`, fornecendo feedback em tempo real da sessão gravada.
-- **Notificação e Acesso Rápido:** Notificação contextual exibindo o nome do arquivo gerado e botão para abrir diretamente o diretório `data/reports/` no Explorador de Arquivos do Windows.
+- **Notificação e Acesso Rápido:** Notificação contextual pós-gravação com botão para abrir diretamente o diretório `data/reports/` no Explorador de Arquivos do Windows via `os.startfile()`.
 - **Filtros por Severidade:** Contadores reativos em tempo real que agrupam os achados em Críticos, Atenção e Estáveis com alternância visual instantânea.
 - **Caixa de Evidência Técnica:** Bloco de destaque com cor `#141E2B`, separando os dados numéricos brutos da justificativa conceitual.
 - **Navegação Contextual:** Roteamento direto acoplado à causa raiz do apontamento (ex.: apontamento de disco direciona para Limpeza Segura).

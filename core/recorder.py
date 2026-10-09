@@ -1,8 +1,8 @@
 """Relator Técnico de Sessão e Gravador Contínuo de Telemetria — Sollaris Nova.
 
 Fornece gravação contínua e assíncrona de telemetria ("Flight Recorder")
-em arquivo de log estruturado sob demanda, com I/O em segundo plano (0ms na GUI)
-e sumário executivo final para diagnóstico e análise de estabilidade.
+em arquivo de log estruturado e altamente detalhado sob demanda, com I/O em segundo plano
+(0ms na GUI) e sumário executivo analítico para diagnóstico e análise de estabilidade.
 """
 
 from __future__ import annotations
@@ -35,11 +35,18 @@ class SessionRecorder:
         self._start_time: float = 0.0
         self._sample_count: int = 0
         self._current_file: Path | None = None
+        self._initial_snapshot: SystemSnapshot | None = None
 
         # Estatísticas acumuladas da sessão gravada
         self._cpu_samples: list[float] = []
         self._ram_samples: list[float] = []
+        self._temp_samples: list[float] = []
         self._anomalies_count: int = 0
+        self._anomalies_by_category: dict[str, int] = {}
+        self._recorded_anomalies: list[DiagnosticFinding] = []
+        self._top_processes_stats: dict[str, dict[str, Any]] = {}
+        self._initial_ram_bytes: int = 0
+        self._final_ram_bytes: int = 0
 
         # Concorrência e fila assíncrona de I/O
         self._queue: queue.Queue[str | None] = queue.Queue(maxsize=2000)
@@ -90,9 +97,17 @@ class SessionRecorder:
             self._is_recording = True
             self._start_time = time.time()
             self._sample_count = 0
+            self._initial_snapshot = initial_snapshot
+            self._initial_ram_bytes = initial_snapshot.ram.used_bytes
+            self._final_ram_bytes = initial_snapshot.ram.used_bytes
+
             self._cpu_samples.clear()
             self._ram_samples.clear()
+            self._temp_samples.clear()
             self._anomalies_count = 0
+            self._anomalies_by_category.clear()
+            self._recorded_anomalies.clear()
+            self._top_processes_stats.clear()
 
             # Limpa qualquer item residual da fila
             while not self._queue.empty():
@@ -131,10 +146,37 @@ class SessionRecorder:
             self._sample_count += 1
             self._cpu_samples.append(snapshot.cpu.total_percent)
             self._ram_samples.append(snapshot.ram.percent)
+            self._final_ram_bytes = snapshot.ram.used_bytes
+
+            if snapshot.cpu.temperature.is_available and snapshot.cpu.temperature.value is not None:
+                self._temp_samples.append(snapshot.cpu.temperature.value)
 
             # Contabiliza anomalias e alertas críticos/atenção
             active_anomalies = [f for f in findings if f.level.value in ("warning", "critical")]
             self._anomalies_count += len(active_anomalies)
+
+            for a in active_anomalies:
+                self._anomalies_by_category[a.category] = self._anomalies_by_category.get(a.category, 0) + 1
+                if not any(existing.title == a.title for existing in self._recorded_anomalies):
+                    self._recorded_anomalies.append(a)
+
+            # Rastreia estatísticas acumuladas dos top processos
+            for p in processes[:5]:
+                if p.name not in self._top_processes_stats:
+                    self._top_processes_stats[p.name] = {
+                        "pid": p.pid,
+                        "ram_bytes_max": p.memory_rss_bytes,
+                        "ram_bytes_sum": p.memory_rss_bytes,
+                        "cpu_max": p.cpu_percent,
+                        "occurrences": 1,
+                    }
+                else:
+                    item = self._top_processes_stats[p.name]
+                    item["pid"] = p.pid
+                    item["ram_bytes_max"] = max(item["ram_bytes_max"], p.memory_rss_bytes)
+                    item["ram_bytes_sum"] += p.memory_rss_bytes
+                    item["cpu_max"] = max(item["cpu_max"], p.cpu_percent)
+                    item["occurrences"] += 1
 
             entry = self._build_tick_entry(snapshot, processes, active_anomalies)
             try:
@@ -153,18 +195,27 @@ class SessionRecorder:
             samples = self._sample_count
             cpu_avg = sum(self._cpu_samples) / max(1, len(self._cpu_samples))
             cpu_max = max(self._cpu_samples) if self._cpu_samples else 0.0
+            cpu_min = min(self._cpu_samples) if self._cpu_samples else 0.0
             ram_avg = sum(self._ram_samples) / max(1, len(self._ram_samples))
             ram_max = max(self._ram_samples) if self._ram_samples else 0.0
+            ram_min = min(self._ram_samples) if self._ram_samples else 0.0
             anomalies = self._anomalies_count
             file_path = self._current_file
+
+            temp_avg = (sum(self._temp_samples) / len(self._temp_samples)) if self._temp_samples else None
+            temp_max = max(self._temp_samples) if self._temp_samples else None
 
             summary_text = self._build_session_summary(
                 duration_sec=duration,
                 samples=samples,
                 cpu_avg=cpu_avg,
                 cpu_max=cpu_max,
+                cpu_min=cpu_min,
                 ram_avg=ram_avg,
                 ram_max=ram_max,
+                ram_min=ram_min,
+                temp_avg=temp_avg,
+                temp_max=temp_max,
                 anomalies=anomalies,
             )
             self._queue.put(summary_text)
@@ -190,7 +241,7 @@ class SessionRecorder:
     def _writer_loop(self, target_path: Path) -> None:
         """Loop trabalhador em background que drena a fila e grava no arquivo em disco."""
         try:
-            with open(target_path, "w", encoding="utf-8") as f:
+            with open(target_path, "a", encoding="utf-8") as f:
                 while True:
                     entry = self._queue.get()
                     if entry is None:
@@ -202,10 +253,14 @@ class SessionRecorder:
             logger.exception("Falha ao gravar arquivo de relatório: %s", target_path)
 
     def _build_session_header(self, snap: SystemSnapshot) -> str:
-        """Gera o cabeçalho técnico detalhado com as especificações da máquina."""
+        """Gera o cabeçalho técnico altamente detalhado com as especificações da máquina."""
         now_str = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S")
-        freq_str = f"{snap.cpu.frequency_base_mhz:.0f} MHz" if snap.cpu.frequency_base_mhz else "N/A"
-        ram_str = format_bytes(snap.ram.total_bytes)
+        freq_base = f"{snap.cpu.frequency_base_mhz:.0f} MHz" if snap.cpu.frequency_base_mhz else "N/A"
+        freq_curr = f"{snap.cpu.frequency_current_mhz:.0f} MHz" if snap.cpu.frequency_current_mhz else "N/A"
+        ram_tot = format_bytes(snap.ram.total_bytes)
+        ram_avail = format_bytes(snap.ram.available_bytes)
+        swap_tot = format_bytes(snap.ram.swap_total_bytes)
+        temp_cpu = f"{snap.cpu.temperature.value:.1f}{snap.cpu.temperature.unit}" if snap.cpu.temperature.is_available and snap.cpu.temperature.value is not None else "Sensor WMI indisponível"
 
         lines = [
             "================================================================================",
@@ -213,15 +268,42 @@ class SessionRecorder:
             "================================================================================",
             f"Data/Hora de Início:    {now_str}",
             f"Sistema Operacional:    {snap.os_name} {snap.os_release} (Build {snap.os_build}) [{snap.architecture}]",
-            f"Processador (CPU):      {snap.cpu.model_name or 'Detectado'}",
-            f"Topologia de CPU:       {snap.cpu.core_count_physical} Núcleos Físicos / {snap.cpu.core_count_logical} Núcleos Lógicos | Base: {freq_str}",
-            f"Memória RAM Total:      {ram_str}",
-            f"Placa de Vídeo (GPU):   {snap.gpu.name} (Driver: {snap.gpu.driver_version or 'Nativo'})",
             f"Tempo de Uptime Prévio: {format_uptime(snap.uptime_seconds)}",
+            f"Processos Ativos no SO: {snap.cpu.process_count} processos | {snap.cpu.thread_count} threads em execução",
+            "--------------------------------------------------------------------------------",
+            "ESPECIFICAÇÕES DE HARDWARE IDENTIFICADAS:",
+            "--------------------------------------------------------------------------------",
+            f"Processador (CPU):      {snap.cpu.model_name or 'Detectado'}",
+            f"  Topologia:            {snap.cpu.core_count_physical} Núcleos Físicos / {snap.cpu.core_count_logical} Núcleos Lógicos",
+            f"  Frequência:           Base: {freq_base} | Atual no início: {freq_curr}",
+            f"  Temperatura Térmica:  {temp_cpu}",
+            f"Memória RAM Primária:   {ram_tot} instalada ({ram_avail} livre no início da sessão)",
+            f"  Arquivo de Swap:      {swap_tot} total alocado para paginação dinâmica",
+            f"Placa de Vídeo (GPU):   {snap.gpu.name} (Driver: {snap.gpu.driver_version or 'Nativo'})",
+        ]
+
+        if snap.gpu.adapter_ram_bytes:
+            lines.append(f"  VRAM Dedicada:        {format_bytes(snap.gpu.adapter_ram_bytes)}")
+        if snap.gpu.temperature.is_available and snap.gpu.temperature.value is not None:
+            lines.append(f"  Temperatura da GPU:   {snap.gpu.temperature.value:.1f}{snap.gpu.temperature.unit}")
+
+        lines.extend([
+            "--------------------------------------------------------------------------------",
+            "UNIDADES DE ARMAZENAMENTO DETECTADAS:",
+            "--------------------------------------------------------------------------------",
+        ])
+
+        for d in snap.disks:
+            tot = format_bytes(d.total_bytes)
+            used = format_bytes(d.used_bytes)
+            free = format_bytes(d.free_bytes)
+            lines.append(f"  [{d.device}] Mount: {d.mountpoint:<6} | Tipo: {d.fstype:<5} | Total: {tot:>9} | Usado: {used:>9} ({d.percent:5.1f}%) | Livre: {free:>9}")
+
+        lines.extend([
             "--------------------------------------------------------------------------------",
             "REGISTRO CRONOLÓGICO DE AMOSTRAGEM E EVENTOS:",
             "--------------------------------------------------------------------------------\n",
-        ]
+        ])
         return "\n".join(lines)
 
     def _build_tick_entry(
@@ -230,7 +312,7 @@ class SessionRecorder:
         procs: list[ProcessItem],
         active_anomalies: list[DiagnosticFinding],
     ) -> str:
-        """Formata uma linha de amostragem de telemetria e eventuais anomalias ativas."""
+        """Formata uma linha de amostragem de telemetria rica e eventuais anomalias ativas."""
         time_str = datetime.now().astimezone().strftime("%H:%M:%S")
         c_pct = snap.cpu.total_percent
         r_pct = snap.ram.percent
@@ -239,21 +321,29 @@ class SessionRecorder:
         s_pct = snap.ram.swap_percent
 
         freq_curr = f"{snap.cpu.frequency_current_mhz:.0f}MHz" if snap.cpu.frequency_current_mhz else "--"
-
-        top_procs_txt = ", ".join(
-            f"{p.name} (PID: {p.pid}, {format_bytes(p.memory_rss_bytes)})"
-            for p in procs[:3]
-        ) if procs else "Nenhum processo monitorado"
+        temp_str = f" | Temp: {snap.cpu.temperature.value:.0f}°C" if snap.cpu.temperature.is_available and snap.cpu.temperature.value is not None else ""
 
         lines = [
-            f"[{time_str}] CPU: {c_pct:5.1f}% ({freq_curr:>7}) | RAM: {r_pct:5.1f}% ({r_used}/{r_tot}) | SWAP: {s_pct:4.1f}%",
-            f"         TOP: {top_procs_txt}",
+            f"[{time_str}] CPU: {c_pct:5.1f}% ({freq_curr:>7}{temp_str}) | RAM: {r_pct:5.1f}% ({r_used}/{r_tot}) | SWAP: {s_pct:4.1f}%"
         ]
 
+        # Top 5 processos formatados
+        if procs:
+            procs_formatted = [
+                f"{p.name} (PID: {p.pid}, {format_bytes(p.memory_rss_bytes)})"
+                for p in procs[:5]
+            ]
+            lines.append(f"         TOP: {', '.join(procs_formatted[:3])}")
+            if len(procs_formatted) > 3:
+                lines.append(f"              {', '.join(procs_formatted[3:])}")
+
+        # Anomalias ativas do instante
         if active_anomalies:
             for a in active_anomalies:
                 tag = "CRÍTICO" if a.level.value == "critical" else "ATENÇÃO"
-                lines.append(f"         >>> [{tag}] {a.title}: {a.evidence}")
+                lines.append(f"         >>> [{tag}] [{a.category}] {a.title}: {a.evidence}")
+                lines.append(f"             Impacto: {a.probable_impact}")
+                lines.append(f"             Ação:    {a.suggested_action}")
 
         lines.append("")  # Linha em branco separadora
         return "\n".join(lines)
@@ -264,23 +354,90 @@ class SessionRecorder:
         samples: int,
         cpu_avg: float,
         cpu_max: float,
+        cpu_min: float,
         ram_avg: float,
         ram_max: float,
+        ram_min: float,
+        temp_avg: float | None,
+        temp_max: float | None,
         anomalies: int,
     ) -> str:
-        """Gera o sumário executivo de encerramento da sessão."""
+        """Gera o sumário executivo analítico e conclusivo de encerramento da sessão."""
         end_time_str = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S")
+        cadence_str = f"~{duration_sec / max(1, samples):.1f}s/amostra" if samples > 0 else "N/A"
+        ram_delta_bytes = self._final_ram_bytes - self._initial_ram_bytes
+        ram_delta_sign = "+" if ram_delta_bytes >= 0 else "-"
+        ram_delta_str = f"{ram_delta_sign}{format_bytes(abs(ram_delta_bytes))}"
+
         lines = [
             "--------------------------------------------------------------------------------",
             "SUMÁRIO EXECUTIVO DA SESSÃO GRAVADA:",
             "--------------------------------------------------------------------------------",
             f"Data/Hora de Encerramento:   {end_time_str}",
             f"Duração Total Monitorada:    {format_uptime(duration_sec)} ({duration_sec} segundos)",
-            f"Total de Amostras Colhidas:  {samples} amostras",
-            f"Processador (CPU):           Média: {cpu_avg:5.1f}% | Pico Máximo: {cpu_max:5.1f}%",
-            f"Memória RAM:                 Média: {ram_avg:5.1f}% | Pico Máximo: {ram_max:5.1f}%",
-            f"Total de Alertas/Anomalias:  {anomalies} ocorrências registradas",
-            "Estado Geral da Sessão:      " + ("CRÍTICO (Gargalos sustentados detectados)" if anomalies > 5 else ("ATENÇÃO" if anomalies > 0 else "ESTÁVEL (Sem violações de estabilidade)")),
-            "================================================================================\n",
+            f"Total de Amostras Colhidas:  {samples} amostras (Cadência média: {cadence_str})",
+            "",
+            "ESTATÍSTICAS CONSOLIDADAS DE PROCESSAMENTO (CPU):",
+            f"  Média de Utilização:       {cpu_avg:5.1f}%",
+            f"  Pico Máximo Registrado:    {cpu_max:5.1f}%",
+            f"  Mínimo Registrado:         {cpu_min:5.1f}%",
         ]
+
+        if temp_avg is not None and temp_max is not None:
+            lines.append(f"  Temperatura Térmica:       Média: {temp_avg:.1f}°C | Pico: {temp_max:.1f}°C")
+
+        lines.extend([
+            "",
+            "ESTATÍSTICAS CONSOLIDADAS DE MEMÓRIA (RAM):",
+            f"  Média de Utilização:       {ram_avg:5.1f}%",
+            f"  Pico Máximo Registrado:    {ram_max:5.1f}%",
+            f"  Mínimo Registrado:         {ram_min:5.1f}%",
+            f"  Variação de Working Set:   {ram_delta_str} durante a sessão monitorada",
+            "",
+            "ANÁLISE DE ANOMALIAS E ESTABILIDADE TÉCNICA:",
+            f"  Total de Alertas/Anomalias:  {anomalies} ocorrências registradas",
+        ])
+
+        if self._anomalies_by_category:
+            for cat, count in self._anomalies_by_category.items():
+                lines.append(f"  - {cat:<24} {count} ocorrências")
+        else:
+            lines.append("  - Nenhuma anomalia crítica ou aviso registrado durante a sessão.")
+
+        if self._recorded_anomalies:
+            lines.extend([
+                "",
+                "DIAGNÓSTICOS TÉCNICOS DETECTADOS NA SESSÃO:",
+            ])
+            for idx, a in enumerate(self._recorded_anomalies, 1):
+                lines.append(f"  {idx}. [{a.category}] {a.title}")
+                lines.append(f"     Evidência:    {a.evidence}")
+                lines.append(f"     Causa:        {a.technical_explanation}")
+                lines.append(f"     Recomendação: {a.suggested_action} (Reversível: {'Sim' if a.is_reversible else 'Não'})")
+
+        if self._top_processes_stats:
+            lines.extend([
+                "",
+                "PROCESSOS MAIS RELEVANTES DA SESSÃO (TOP CONSUMIDORES):",
+            ])
+            sorted_procs = sorted(
+                self._top_processes_stats.items(),
+                key=lambda x: x[1]["ram_bytes_max"],
+                reverse=True,
+            )[:5]
+            for idx, (pname, pdata) in enumerate(sorted_procs, 1):
+                avg_ram = pdata["ram_bytes_sum"] / max(1, pdata["occurrences"])
+                lines.append(
+                    f"  {idx}. {pname:<24} PID: {pdata['pid']:<6} | RAM Média: {format_bytes(int(avg_ram)):>9} | Pico RAM: {format_bytes(pdata['ram_bytes_max']):>9} | Pico CPU: {pdata['cpu_max']:4.1f}%"
+                )
+
+        lines.extend([
+            "",
+            "Estado Geral da Sessão:      " + (
+                "CRÍTICO (Gargalos severos sustentados identificados)"
+                if anomalies > 5
+                else ("ATENÇÃO (Anomalias pontuais registradas)" if anomalies > 0 else "ESTÁVEL (Sem violações de estabilidade)")
+            ),
+            "================================================================================\n",
+        ])
         return "\n".join(lines)
