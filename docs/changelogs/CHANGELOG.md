@@ -25,19 +25,29 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
   - Miolo digital com tipografia Segoe UI Bold em tempo real.
   - Variante padrão (116px) para cartões de CPU e Memória RAM.
   - Variante compacta (56px) para cada partição detectada no cartão de discos locais.
-- **Gráfico Histórico dos Últimos 60 Segundos (`app/components/performance_chart.py`):**
-  - Gráfico em tempo real embarcado no CustomTkinter via `FigureCanvasTkAgg`.
-  - Estética Dark Minimalist combinando com os tokens do tema (`#111923`, `#0B0F14`, `#263345`).
-  - Atualização por substituição de vetores via `set_data()` e despacho assíncrono não-bloqueante com `draw_idle()`, garantindo renderização em sub-2ms.
-  - Seletores interativos em estilo pílula: `Ambos (CPU + RAM)`, `Apenas CPU` e `Apenas RAM`.
-- **Estatísticas Temporais da Janela Móvel (`core/monitor.py`):**
-  - Extração atômica e thread-safe de dados históricos com `get_history_snapshot()`.
-  - Cálculo de média móvel, leitura máxima (pico) e leitura mínima dos últimos 60 segundos com `get_window_statistics()`.
-  - Exibição de média e pico da janela diretamente nos cartões de CPU e RAM.
+- **Curvas Fluidas & Interpolação de Alta Densidade (`app/components/performance_chart.py`):**
+  - Implementação de `_smooth_data()` com interpolação densa por `np.interp` (120 pontos) e filtro de suavização Hanning de 5 pontos com atenuação de bordas.
+  - Eliminação de arestas serrilhadas e saltos bruscos no histórico de 60 segundos mantendo rigor matemático (0% a 100%).
+- **Identificação Visual de Recursos e Área Sombreada:**
+  - Preenchimento translúcido sob as curvas (`fill_between` com alfa 0.14 para CPU azul e 0.08 para RAM verde).
+  - Badges dedicados coloridos de status no cabeçalho do gráfico com valores instantâneos (`● CPU: XX.X%` em `#60A5FA` e `● RAM: YY.Y%` in `#4FBF8A`).
+- **Cursor Interativo de Hover no Gráfico de Telemetria:**
+  - Rastreamento contínuo do mouse via eventos `motion_notify_event` e `axes_leave_event` do Matplotlib.
+  - Linha guia vertical tracejada sincronizada com marcadores circulares pontuais sobre as curvas ativas.
+  - Pílula temporal dinâmica no cabeçalho exibindo a leitura exata do segundo apontado pelo cursor (ex.: `[ -24s ] ● CPU: 42.1% ● RAM: 48.9%`).
+- **Sistema de Tooltips Técnicos Flutuantes (`app/components/tooltip.py`):**
+  - Componente nativo de balão contextual `Tooltip` com posicionamento dinâmico pelo ponteiro do mouse (`winfo_pointerxy()`) e atraso de disparo configurável.
+  - Integração em todos os indicadores da Visão Geral:
+    - Gauge principal de CPU (modelo, frequência atual, carga total e contagem de núcleos físicos/lógicos).
+    - Gauge principal de RAM (uso percentual, bytes utilizados, disponíveis e arquivo de paginação swap).
+    - Micro-chips de núcleos lógicos individuais (`N1` a `N12+`).
+    - Medidores compactos de partição de disco (espaço ocupado, livre, sistema de arquivos e caminho de montagem).
+    - Badge superior de integridade e estabilidade do sistema.
 - **Testes Automatizados:**
-  - `tests/test_radial_gauge.py`: 3 novos testes validando geometria de arcos, clamping de valores (0-100%) e limites cromáticos.
-  - `tests/test_charts.py`: 4 novos testes cobrindo inicialização de figura, alternância de modos, atualização de amostras (0 a 60 pontos) e cálculos matemáticos de janela.
-  - Suíte total expandida para 27 testes automatizados (100% de aprovação).
+  - `tests/test_radial_gauge.py`: 3 testes validando geometria de arcos, clamping de valores (0-100%) e limites cromáticos.
+  - `tests/test_charts.py`: 4 testes cobrindo inicialização de figura, alternância de modos, atualização com interpolação (120 pontos) e cálculos de janela.
+  - `tests/test_tooltip.py`: 2 testes cobrindo ciclo de vida do popup, funções dinâmicas de texto e destruição segura.
+  - Suíte total expandida para 29 testes automatizados (100% de aprovação).
 
 ## [0.1.0-alpha] - 2026-10-09 (Fase 1: Fundação & Hardware)
 
