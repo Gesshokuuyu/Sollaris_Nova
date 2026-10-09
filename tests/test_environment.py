@@ -81,6 +81,7 @@ def test_directory_structure_exists() -> None:
         root_dir / "safety",
         root_dir / "tests",
         root_dir / "data",
+        root_dir / "scripts",
     ]
 
     for path in expected_directories:

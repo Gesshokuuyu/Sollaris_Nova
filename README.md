@@ -1,120 +1,151 @@
 # Sollaris Nova — PC Optimizer
 
-> Aplicativo desktop em Python para monitoramento técnico, diagnóstico de gargalos e otimização segura do computador no Windows 10 e 11.
+Aplicativo desktop em Python para monitoramento técnico de hardware, diagnóstico explicável de gargalos e manutenção preventiva no Windows 10 e 11.
 
 ---
 
-## 📌 Visão Geral
+## 1. Visão Geral e Princípios
 
-O **Sollaris Nova** é uma ferramenta técnica de diagnóstico e monitoramento de desempenho local. O projeto foi projetado com base em três pilares fundamentais:
-1. **Medições Reais:** Informações autênticas de CPU, RAM, Armazenamento e Sensores térmicos. Zero números inventados ou pontuações universais arbitrárias.
-2. **Diagnósticos Explicáveis:** Gargalos são identificados com base na persistência de múltiplas amostras, acompanhados de justificativa técnica, impacto e risco.
-3. **Segurança e Transparência:** Nenhuma alteração destrutiva sem confirmação expressa e prévia. Zero telemetria remota.
+O Sollaris Nova é um utilitário focado em transparência, estabilidade e respeito ao sistema operacional:
 
----
-
-## 📂 Navegação da Documentação e Governança
-
-Para manter a consistência contínua do projeto, a documentação viva está estruturada em:
-
-| Pasta / Arquivo | Descrição |
-| :--- | :--- |
-| [PROJECT_SPEC.md](file:///d:/GitHub/Sollaris_Nova/PROJECT_SPEC.md) | Especificação técnica mestre (Visão geral, escopo do MVP, RF-001 a RF-015, métricas e fases) |
-| [docs/specs/MVP_CRITERIA.md](file:///d:/GitHub/Sollaris_Nova/docs/specs/MVP_CRITERIA.md) | Critérios de aceite e Definição de Pronto (DoD) do MVP |
-| [docs/specs/FUTURE_REQUIREMENTS.md](file:///d:/GitHub/Sollaris_Nova/docs/specs/FUTURE_REQUIREMENTS.md) | Catálogo vivo de novos requisitos futuros e backlog levantados a cada fase |
-| [docs/architecture/ARCHITECTURE.md](file:///d:/GitHub/Sollaris_Nova/docs/architecture/ARCHITECTURE.md) | Arquitetura em camadas desacopladas, thread de coleta em background e dataclasses imutáveis |
-| [docs/standards/DESIGN_SYSTEM.md](file:///d:/GitHub/Sollaris_Nova/docs/standards/DESIGN_SYSTEM.md) | Design System (Paleta de cores `#0B0F14` / `#3B82F6`, Segoe UI, espaçamento, proibições) |
-| [docs/standards/CODE_STANDARDS.md](file:///d:/GitHub/Sollaris_Nova/docs/standards/CODE_STANDARDS.md) | Padrões de código PEP 8, tipagem estática obrigatória, tratamento resiliente de erros e commits |
-| [docs/changelogs/CHANGELOG.md](file:///d:/GitHub/Sollaris_Nova/docs/changelogs/CHANGELOG.md) | Histórico contínuo de alterações seguindo o padrão Keep a Changelog |
-| [docs/workflow/DEVELOPMENT_AND_RELEASE_FLOW.md](file:///d:/GitHub/Sollaris_Nova/docs/workflow/DEVELOPMENT_AND_RELEASE_FLOW.md) | Fluxo Git, estratégia de branches (`main`, `lts`, `testing`, `develop`), tratamento em issues e CI/CD |
-| [docs/setup/SETUP_GUIDE.md](file:///d:/GitHub/Sollaris_Nova/docs/setup/SETUP_GUIDE.md) | Guia completo de configuração de ambiente e comandos |
-| [THIRD_PARTY_NOTICES.md](file:///d:/GitHub/Sollaris_Nova/THIRD_PARTY_NOTICES.md) | Atribuição de licenças de dependências de terceiros |
+- **Medições Autênticas:** Métricas reais de CPU, RAM, Armazenamento e Sensores térmicos obtidas via chamadas diretas ao Windows (Kernel32, Psapi, Registro e WMI). Não utiliza estimativas arbitrárias ou pontuações de saúde fictícias.
+- **Arquitetura Não-Bloqueante:** O loop visual da interface (CustomTkinter) opera a 60 FPS constantes. Toda a coleta de hardware roda em thread desacoplada em segundo plano (`MonitorService`), consumindo dados via filas atômicas sem travar a interface (*zero-freeze*).
+- **Execução Segura:** Opera sem necessidade de privilégios de Administrador (sem janelas de UAC). Tratamento resiliente de permissões de processos e discos removíveis sem mídia.
+- **Privacidade Total:** 100% offline, sem envio de telemetria ou comunicação de rede externa.
 
 ---
 
-## 🏗️ Estrutura do Repositório
+## 2. Como o Aplicativo Funciona
 
 ```
-Sollaris_Nova/
-├── main.py                     # Ponto de entrada (CLI e GUI)
-├── run.bat / run.ps1           # Scripts de execução rápida
-├── setup_env.bat / .ps1        # Scripts de setup automatizado
-├── requirements.txt            # Dependências de produção
-├── requirements-dev.txt        # Dependências de desenvolvimento e testes
-├── PROJECT_SPEC.md             # Especificação técnica do projeto
-├── README.md                   # Portal de apresentação do projeto
-├── LICENSE                     # Licença MIT
-├── THIRD_PARTY_NOTICES.md      # Avisos de dependências de terceiros
-├── docs/                       # Documentação viva do projeto
-│   ├── specs/                  # Especificações técnicas e critérios de aceite
-│   ├── architecture/           # Arquitetura em camadas e concorrência
-│   ├── standards/              # Design System e padrões de código
-│   ├── changelogs/             # Registro formal de mudanças por versão
-│   └── setup/                  # Guias de instalação e execução
-├── app/                        # Camada de Interface (CustomTkinter)
-│   ├── theme.py                # Tokens de cores e tipografia
-│   ├── components/             # Cartões de métricas, sidebar e gráficos
-│   └── pages/                  # Dashboard, Diagnóstico, Limpeza, etc.
-├── core/                       # Camada de Negócio e Coleta (Headless)
-│   ├── hardware.py             # Coletor de métricas de hardware e sensores
-│   ├── monitor.py              # Thread assíncrona de monitoramento
-│   ├── processes.py            # Coleta resiliente de processos do sistema
-│   └── diagnostics.py          # Motor de detecção de gargalos
-├── database/                   # Persistência local (SQLite)
-├── safety/                     # Permissões, auditoria e rollback seguro
-├── tests/                      # Suite de testes automatizados (pytest)
-└── data/                       # Armazenamento local (.db e logs)
+[Hardware / SO Windows]
+   │  (Kernel32, Psapi, Winreg, psutil)
+   ▼
+[MonitorService (Thread em Background)]  ──>  Coleta de snapshot em sub-15ms
+   │  (Fila thread-safe atômica / queue.Queue)
+   ▼
+[MainWindow (GUI CustomTkinter)]         ──>  Reciclagem de widgets em sub-0.5ms (60 FPS)
+   ├── Visão Geral (CPU, RAM, Swap, Discos, GPU, Top Processos)
+   ├── Diagnóstico Explicável (Regras técnicas com severidade)
+   ├── Limpeza Segura (Varredura não-destrutiva de temporários)
+   ├── Inicialização (Programas no Registro HKCU/HKLM)
+   ├── Modo Game (Perfis de energia e prioridade)
+   └── Histórico da Sessão (Médias e picos)
 ```
 
 ---
 
-## 🚀 Como Executar (Experiência Limpa / 1 Clique)
+## 3. Pré-requisitos
 
-Você **não precisa digitar comandos no terminal** nem conviver com janelas pretas de console:
-
-- **Opção A (Mais agradável): Ícone Oficial na Área de Trabalho**
-  - Execute `create_desktop_shortcut.bat` (ou `.\create_desktop_shortcut.ps1`).
-  - Um atalho **Sollaris Nova** com ícone oficial de alta resolução será colocado no seu **Desktop** e na pasta raiz.
-  - O aplicativo abre de forma **100% silenciosa** (`pythonw.exe`), sem nenhuma janela de terminal aberta.
-
-- **Opção B: Lançador Silencioso Direto**
-  - Dê um duplo clique em `launch_silent.vbs`.
-
-- **Opção C: Lançador no Terminal com Logs**
-  - Dê um duplo clique em `run.bat` ou execute `.\run.ps1` no PowerShell.
+- **Sistema Operacional:** Windows 10 ou Windows 11 (64-bit).
+- **Python:** Versão 3.14 ou superior instalada e acessível no PATH do Windows.
 
 ---
 
-## 🛠️ Diagnóstico do Ambiente e Testes (Para Desenvolvedores)
-Para verificar as métricas de hardware detectadas e a integridade das bibliotecas diretamente no terminal:
+## 4. Instalação e Configuração
+
+### Opção 1: Setup Automático via Script
+Na raiz do repositório, execute o script correspondente ao seu terminal para criar o ambiente virtual `.venv` e instalar todas as dependências:
+
+- **Via Prompt de Comando (CMD):**
+  ```cmd
+  scripts\setup_env.bat
+  ```
+
+- **Via PowerShell:**
+  ```powershell
+  .\scripts\setup_env.ps1
+  ```
+
+### Opção 2: Instalação Manual via Pip
+```powershell
+py -3.14 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install --upgrade pip
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+```
+
+---
+
+## 5. Como Executar
+
+### 5.1 Atalho na Área de Trabalho (Recomendado)
+Para criar o atalho oficial com ícone personalizado na Área de Trabalho e na raiz do projeto:
+
+- Dê um duplo clique em `scripts\create_desktop_shortcut.bat`, ou rode no PowerShell:
+  ```powershell
+  .\scripts\create_desktop_shortcut.ps1
+  ```
+- O atalho executa a aplicação de forma silenciosa via `scripts\launch_silent.vbs`, sem abrir janelas de terminal.
+
+### 5.2 Execução via Linha de Comando ou Scripts
+- **CMD:** `scripts\run.bat`
+- **PowerShell:** `.\scripts\run.ps1`
+- **Direto pelo Python:**
+  ```powershell
+  .\.venv\Scripts\python.exe main.py
+  ```
+
+### 5.3 Diagnóstico do Ambiente via CLI
+Para verificar as bibliotecas e a detecção de hardware diretamente pelo terminal:
 ```powershell
 .\.venv\Scripts\python.exe main.py --check-env
 ```
 
-### 4. Executar Testes Automatizados
+---
+
+## 6. Testes Automatizados e Qualidade de Código
+
+### Executar a Suíte de Testes
 ```powershell
 .\.venv\Scripts\pytest -v
 ```
 
-### 5. Checar Qualidade e Padrões de Código (Ruff)
+### Checagem de Linter e Padrões (Ruff)
 ```powershell
 .\.venv\Scripts\ruff check .
 ```
 
 ---
 
-## 🌿 Fluxo de Branches e Tratamento de Issues
+## 7. Estrutura do Projeto
 
-O desenvolvimento segue uma estrutura com branches permanentes e branches efêmeras de trabalho:
+```
+Sollaris_Nova/
+├── app/                        # Camada de Interface Gráfica (CustomTkinter)
+│   ├── components/             # Sidebar técnica e componentes reutilizáveis
+│   ├── theme.py                # Tokens de cores e tipografia Segoe UI
+│   └── window.py               # Janela principal e reciclagem de widgets
+├── core/                       # Núcleo de Coleta e Lógica de Negócio
+│   ├── hardware.py             # Coletor de hardware (Kernel32, psutil, WMI)
+│   ├── monitor.py              # Thread assíncrona de monitoramento
+│   ├── processes.py            # Coleta de processos em sub-15ms (Win32)
+│   ├── diagnostics.py          # Motor de diagnóstico explicável
+│   ├── cleaner.py              # Varredura não-destrutiva de temporários
+│   └── startup.py              # Enumeração de inicialização (Registro)
+├── scripts/                    # Scripts utilitários de execução e atalhos
+│   ├── run.bat / run.ps1       # Executores rápidos da aplicação
+│   ├── setup_env.bat / .ps1    # Provisionamento do ambiente virtual
+│   ├── launch_silent.vbs       # Lançador sem janela de console
+│   └── create_desktop_shortcut # Gerador de atalho oficial no Desktop
+├── assets/                     # Ícones monocromáticos e identidade visual
+├── docs/                       # Documentação técnica e governança
+│   ├── architecture/           # Detalhes de concorrência e camadas
+│   ├── changelogs/             # Registro formal de alterações
+│   ├── phases/                 # Relatórios de conclusão de fases
+│   ├── setup/                  # Guia estendido de configuração
+│   ├── specs/                  # Critérios de aceite e requisitos futuros
+│   └── standards/              # Normas de código e Design System
+├── tests/                      # Testes automatizados (pytest)
+├── main.py                     # Ponto de entrada da aplicação
+├── requirements.txt            # Dependências de produção
+├── requirements-dev.txt        # Dependências de desenvolvimento e testes
+└── LICENSE                     # Licença MIT
+```
 
-- **`main`**: Versão estável / produção / releases.
-- **`lts`**: Versão de suporte estendido para correções críticas de segurança.
-- **`testing`**: Homologação e validação pré-release.
-- **`develop`**: Branch ativa de integração do desenvolvimento diário.
-- **Branches de trabalho**:
-  - `feature/<id>-<nome>`: Novas funcionalidades a partir de `develop`.
-  - `fix/<issue-id>-<nome>`: Correções a partir de `develop`.
-  - `hotfix/<versao>-<nome>`: Correções emergenciais a partir de `main`.
+---
 
-> **Regra Obrigatória:** Toda alteração nasce a partir de uma **Issue** no GitHub (utilizando os templates em `.github/ISSUE_TEMPLATE/`) e é integrada via **Pull Request** para a branch correta com validação contínua do GitHub Actions.
+## 8. Licença
 
+Este projeto é distribuído sob a licença [MIT](LICENSE). Consulte o arquivo [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) para atribuições de bibliotecas de terceiros.

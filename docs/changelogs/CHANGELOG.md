@@ -10,40 +10,42 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [Não Lançado] - Em Desenvolvimento
 
 ### Planejado para a Fase 2 (Dashboard Completo)
-- Thread assíncrona de coleta com fila thread-safe (`core.monitor.MonitorService`).
-- Buffer circular de 60 segundos com `collections.deque(maxlen=60)`.
-- Gráfico histórico duplo de CPU e RAM em tempo real com Matplotlib.
-- Monitor de processos (Top 5 por uso de memória RAM) com tratamento de permissões.
+- Gráfico histórico duplo de CPU e RAM em tempo real integrado via Matplotlib (`FigureCanvasTkAgg`).
+- Renderização visual das taxas de variação e consumo contínuo do buffer histórico de 60 segundos.
+- Refinamento visual dos ícones de processos do sistema e ordenações adicionais.
 
 ---
 
 ## [0.1.0-alpha] - 2026-10-09 (Fase 1: Fundação & Hardware)
 
 ### Adicionado
-- **Núcleo de Métricas Autênticas (`core/hardware.py`):**
+- **Núcleo de Métricas Autênticas & Baixo Nível (`core/hardware.py`):**
   - Dataclasses imutáveis tipadas: `SensorReading`, `CpuMetrics`, `RamMetrics`, `DiskPartitionMetrics`, `GpuMetrics` e `SystemSnapshot`.
-  - Coletor de hardware (`HardwareCollector`) via `psutil`, `platform` e WMI (`Win32_VideoController`).
+  - Coletor de hardware (`HardwareCollector`) via `psutil`, `platform` e APIs nativas do Windows (`Kernel32`, `Psapi`, `Winreg`).
+  - Coleta direta de partições em 1.5ms via `GetLogicalDriveStringsW` e `GetDiskFreeSpaceExW`, evitando timeouts em drives vazios.
+  - Leitura instantânea de nome de processador via Registro do Windows (0.03ms).
   - Tratamento resiliente de sensores ACPI: captura limpa de `wmi.x_access_denied` sem crash ou zeros artificiais.
-  - Filtro protetor de partições: supressão de exceções em unidades de cartão de memória ou discos vazios.
   - Formatadores de precisão: `format_bytes`, `format_frequency` e `format_uptime`.
-- **Design System & Navegação Sem Emojis (`app/components/sidebar.py`):**
-  - Barra lateral de 220px com navegação técnica.
-  - Conjunto de 14 ícones monocromáticos em PNG (`assets/nav_icons/`) para estados normal e ativo das rotas.
-- **Painel Técnico de Hardware (`app/window.py`):**
-  - Header bar com timestamp da amostragem, badge de estabilidade e botão "Atualizar Agora".
-  - Cartão de CPU com destaque percentual, progresso colorido, modelo, núcleos, frequências e temperatura.
-  - Cartão de RAM com proporção em uso / total, barra de progresso e nota técnica sobre cache reaproveitável.
-  - Cartão de Armazenamento multi-partição dinâmico com alertas para unidades abaixo de 15 GB livres.
-  - Cartão de GPU & Sensores com nome da placa, versão do driver e status de interface WMI.
-  - Cartão do Sistema com versão do Windows, compilação, arquitetura e uptime formatado.
-  - Barra de rodapé técnica com status operacional.
+- **Top Processos de Altíssima Velocidade (`core/processes.py`):**
+  - Varredura em 13ms via `CreateToolhelp32Snapshot` e `GetProcessMemoryInfo`, eliminando overhead de 1.1s do `psutil`.
+- **Serviço de Monitoramento Assíncrono (`core/monitor.py`):**
+  - Daemon thread desacoplada com inicialização de COM (`CoInitialize`), fila atômica (`queue.Queue`) e evento de wake imediato (`threading.Event`).
+- **Módulos de Sistema e Diagnóstico Inicial:**
+  - `core/diagnostics.py`: Motor de diagnóstico explicável baseado em regras e persistência temporal.
+  - `core/cleaner.py`: Varredura não-destrutiva de temporários e caches em background thread.
+  - `core/startup.py`: Mapeamento de entradas de inicialização no Registro do Windows (HKCU/HKLM).
+- **Design System, UI Fluida & Loader Não-Bloqueante (`app/`):**
+  - Barra lateral de 220px com navegação técnica e 14 ícones monocromáticos vetoriais em PNG (`assets/nav_icons/`), sem emojis.
+  - Sistema de loader visual: barra de progresso indeterminada de 3px e botões com transição de estado reativo (*"Atualizando..."* em 1.15ms).
+  - Resolução de artefatos visuais: barras de progresso com 8px de altura sólida sem distorções de canvas, e pré-carregamento imediato de discos.
+  - Cartões técnicos para CPU (com chips por núcleo lógico), RAM física e paginação, Discos, GPU/Display, Sistema e Top Processos.
 - **Ponto de Entrada Integrado (`main.py`):**
-  - Conexão nativa com `MainWindow`.
-  - CLI com flags `--check-env` e `--verbose`.
+  - Lançador desktop 100% silencioso (`launch_silent.vbs`) e atalho com ícone oficial `sollaris_nova.ico`.
 - **Suíte de Testes Automatizados (`tests/`):**
-  - 15 testes automatizados aprovados no `pytest` cobrindo o ambiente, a camada de hardware e a interface gráfica.
+  - 20 testes automatizados aprovados no `pytest` com 100% de sucesso.
 - **Artefatos e Governança:**
   - Criação de `docs/phases/PHASE_1_FOUNDATION.md`.
+  - Relatório técnico de desempenho e loader em `phase_1_performance_and_loader_report.md`.
   - Atualização do catálogo vivo `docs/specs/FUTURE_REQUIREMENTS.md`.
   - Atualização dos critérios de aceite em `docs/specs/MVP_CRITERIA.md`.
 

@@ -18,6 +18,11 @@ Este documento registra continuamente todas as ideias, novos requisitos funciona
 | **RF-FUT-006** | Monitoramento de NPU (Neural Processing Unit) | Fase 1 | Detecção de consumo de aceleradores neurais em chips modernos (Intel Core Ultra, Snapdragon X, Ryzen AI) no Windows 11. | Baixa | Pós-MVP | Catalogado |
 | **RF-FUT-007** | Detecção de Eventos Plug-and-Play de Armazenamento (`WM_DEVICECHANGE`) | Fase 1 | Atualização instantânea dos cartões de disco quando uma unidade USB for inserida ou ejetada, sem depender de refresh manual. | Média | Fase 2 | Planejado |
 | **RF-FUT-008** | Driver Opcional de Baixo Nível para Sensores de Desktop (WinRing0) | Fase 1 | Em sistemas desktop onde ACPI ThermalZone requer elevação de privilégios, oferecer serviço opcional transparente para leitura de CPU package temp. | Média | Pós-MVP | Investigar |
+| **RF-FUT-009** | Coleta de Processos em Sub-15ms via Win32 Nativo | Fase 1 | Substituição de `psutil.process_iter` (1.1s) por APIs nativas Win32 (`CreateToolhelp32Snapshot` + `GetProcessMemoryInfo`), garantindo leitura sem overhead. | Alta | Concluído (Fase 1) | Entregue |
+| **RF-FUT-010** | Loader Visual Não-Bloqueante com Concorrência Atômica | Fase 1 | Eliminação do freeze no botão "Atualizar Agora" com delegação para thread de background e barra de loading indeterminada de 3px. | Alta | Concluído (Fase 1) | Entregue |
+| **RF-FUT-011** | Varredura de Temporários Totalmente Assíncrona | Fase 1 | Execução do `CleanerScanner` em worker thread desacoplada da GUI com callback atômico, prevenindo congelamentos em diretórios com >50.000 arquivos. | Média | Fase 1 / 4 | Entregue |
+| **RF-FUT-012** | Suporte Dinâmico a CPUs de Alta Densidade (16+ e 24+ Threads) | Fase 1 | Ajuste responsivo ou paginação dos micro-medidores de núcleos lógicos para processadores híbridos (Intel P/E cores e AMD 16C/32T). | Média | Fase 2 | Planejado |
+| **RF-FUT-013** | Padronização Anti-Aliasing para Monitores High-DPI | Fase 1 | Padronização de todas as `CTkProgressBar` para altura >= 8px e raio de canto proporcional, prevenindo artefatos visuais de linhas/listras. | Alta | Concluído (Fase 1) | Entregue |
 
 ---
 
@@ -25,8 +30,10 @@ Este documento registra continuamente todas as ideias, novos requisitos funciona
 
 ### Fase 1 — Fundação e Coleta de Métricas
 - **Descoberta WMI ACPI:** A classe `MSAcpi_ThermalZoneTemperature` retorna `wmi.x_access_denied` em execuções de usuário comum no Windows 10/11. O sistema agora exibe `"Sensor indisponível"` com elegância. Foi catalogado o requisito `RF-FUT-008` para investigar soluções de baixo nível caso o usuário deseje telemetria aprofundada de clock/temperatura.
-- **Drives Vazios / Leitores de Cartão:** Unidades mapeadas que não possuem mídia física inserida disparam `OSError [WinError 21]`. O filtro implementado em `HardwareCollector` protege a aplicação contra travamentos. Catalogado `RF-FUT-007` para sincronização reativa com mensagens do Windows.
+- **Drives Vazios / Leitores de Cartão:** Unidades mapeadas que não possuem mídia física inserida disparam `OSError [WinError 21]`. O filtro implementado via `GetLogicalDriveStringsW` e `GetDiskFreeSpaceExW` reduz o tempo de checagem para 1.5ms e protege a aplicação contra travamentos. Catalogado `RF-FUT-007` para sincronização reativa com mensagens do Windows.
 - **Navegação Sem Emojis:** Identificada a necessidade de ícones visuais profissionais vetoriais em PNG monocromático para substituir qualquer elemento com aspecto artificial. Entregue pacote de ícones em `assets/nav_icons/`.
+- **Gargalos de CPU/Processos:** O overhead de instanciar objetos `psutil.Process` em loop foi eliminado via Win32 ctypes (`CreateToolhelp32Snapshot`), reduzindo o tempo de 1.118 ms para 13 ms (`RF-FUT-009`).
+- **Feedback Visual de Recarregamento:** Implementado o sistema de loader não-bloqueante (`RF-FUT-010`) e erradicação de artefatos de renderização subpixel (`RF-FUT-013`).
 
 ### Fase 2 — Dashboard Completo
 *(Espaço reservado para descobertas da Fase 2).*

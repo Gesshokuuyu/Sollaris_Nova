@@ -1,9 +1,10 @@
 # Launcher automatico transparente para Sollaris Nova (PowerShell)
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location $ScriptDir
+$ProjectRoot = Split-Path -Parent $ScriptDir
+Set-Location $ProjectRoot
 
-$PythonExe = Join-Path $ScriptDir ".venv\Scripts\python.exe"
+$PythonExe = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
 
 # 1. Auto-provisionamento caso .venv nao exista
 if (-not (Test-Path $PythonExe)) {
@@ -35,4 +36,4 @@ if (-not (Test-Path $PythonExe)) {
 }
 
 # 2. Execucao da aplicacao
-& $PythonExe (Join-Path $ScriptDir "main.py") @args
+& $PythonExe (Join-Path $ProjectRoot "main.py") @args

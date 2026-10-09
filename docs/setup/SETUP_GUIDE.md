@@ -19,15 +19,15 @@ Este documento fornece as instruções para configurar o ambiente de desenvolvim
 Você **não precisa** abrir terminais nem conviver com janelas pretas de console.
 
 ### Opção A (Recomendada): Ícone Oficial no Desktop
-1. Dê um duplo clique em `create_desktop_shortcut.bat` (ou execute `.\create_desktop_shortcut.ps1`).
+1. Dê um duplo clique em `scripts/create_desktop_shortcut.bat` (ou execute `.\scripts\create_desktop_shortcut.ps1`).
 2. Isso cria o atalho oficial com ícone personalizado na sua **Área de Trabalho** (`Sollaris Nova.lnk`) e na raiz do projeto.
 3. Ao clicar no ícone, a aplicação abre de forma **100% silenciosa** via `pythonw.exe`, sem abrir nenhuma janela de prompt de comando.
 
 ### Opção B: Lançador Silencioso Direto
-- Dê um duplo clique em `launch_silent.vbs`.
+- Dê um duplo clique em `scripts/launch_silent.vbs`.
 
 ### Opção C: Lançador Batch no Terminal
-- Dê um duplo clique em `run.bat` (ou execute `.\run.ps1` no PowerShell).
+- Dê um duplo clique em `scripts/run.bat` (ou execute `.\scripts\run.ps1` no PowerShell).
 
 ---
 
@@ -36,8 +36,8 @@ Você **não precisa** abrir terminais nem conviver com janelas pretas de consol
 Caso prefira executar manualmente:
 
 ```powershell
-# 1. Criar o ambiente virtual com Python 3.12
-py -3.12 -m venv .venv
+# 1. Criar o ambiente virtual com Python 3.14
+py -3.14 -m venv .venv
 
 # 2. Ativar o ambiente virtual
 .\.venv\Scripts\Activate.ps1
@@ -60,8 +60,8 @@ python main.py
 ```
 
 Ou através dos atalhos rápidos:
-- PowerShell: `.\run.ps1`
-- CMD: `run.bat`
+- PowerShell: `.\scripts\run.ps1`
+- CMD: `scripts\run.bat`
 
 ---
 

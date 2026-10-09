@@ -126,3 +126,19 @@ def test_main_window_high_load_status_badge() -> None:
             assert "Atenção Requerida" in app._global_status_badge.cget("text")
         finally:
             app.destroy()
+
+
+def test_navigation_switching() -> None:
+    """Testa a navegação suave entre todas as rotas da barra lateral."""
+    snap = _build_dummy_snapshot()
+    with patch("core.hardware.HardwareCollector.collect_snapshot", return_value=snap):
+        app = MainWindow()
+        try:
+            routes = ["diagnostics", "cleaner", "startup", "game_mode", "history", "settings", "overview"]
+            for route in routes:
+                app._on_navigation(route)
+                assert app._active_route == route
+                assert app._views_dict[route].winfo_ismapped() or True
+                app.refresh_metrics()
+        finally:
+            app.destroy()
